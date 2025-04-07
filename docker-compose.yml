@@ -11,9 +11,22 @@ services:
     command:
       ["postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"]
 
+  rabbitmq_server:
+    image: "rabbitmq:4.0.2-management"
+    container_name: "solar_sizing_rmq"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER} # Load from .env
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS} # Load from .env
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq/
+
 networks:
   default:
     external: true
     name: my-chess-style-net
 volumes:
   pgdata:
+  rabbitmqdata:

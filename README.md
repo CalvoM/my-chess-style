@@ -38,4 +38,18 @@ Please run the following command:
 
 ```sh
 uv run pytest
+
+```
+
+## Celery tasks
+
+Run celery worker.
+```sh
+uv run celery -A my_chess_style worker --loglevel=info
+```
+
+Run the celery flower to inspect the tasks on a web interface.
+
+```sh
+uv run celery -A my_chess_style flower --port=5555
 ```
