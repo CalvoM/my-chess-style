@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "style_predictor.apps.StylePredictorConfig",
+    "django.contrib.postgres",
 ]
 
 MIDDLEWARE = [

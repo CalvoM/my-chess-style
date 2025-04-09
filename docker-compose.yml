@@ -13,7 +13,7 @@ services:
 
   rabbitmq_server:
     image: "rabbitmq:4.0.2-management"
-    container_name: "solar_sizing_rmq"
+    container_name: "my_chess_style_rmq"
     ports:
       - "5672:5672"
       - "15672:15672"
