@@ -2,16 +2,7 @@ from typing import override
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
-
-
-class TimeStampedModel(models.Model):
-    """Abstract base class that adds created_at and updated_at fields to models."""
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
+from style_predictor.apis.base_model import TimeStampedModel
 
 
 class PGNFileUpload(TimeStampedModel):
