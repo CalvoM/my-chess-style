@@ -25,7 +25,7 @@ class Parser:
                 tag_name = token.tvalue
                 token_tvalue = next(tokens)
                 if token_tvalue.ttype != TokenType.TAGVALUE:
-                    raise PGNParserError()
+                    raise PGNParserError(f"Invalid Tag value: {token_tvalue.ttype}")
                 tag_value = token_tvalue.tvalue
                 game.add_tag(tag_name, tag_value)
             elif token.ttype == TokenType.MOVENUMBER and isinstance(token, MoveToken):

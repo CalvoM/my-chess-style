@@ -70,7 +70,7 @@ class MoveToken(Token):
 class Lexer:
     def __init__(self, data: str):
         self._buffer = data
-        self._buffer_pos = 0
+        self._buffer_pos: int = 0
         self._loc = Position(1, 1)
         self._tokens: list[Token] = list()
 
@@ -157,13 +157,15 @@ class Lexer:
             )
             if match:
                 movenumber = match.groupdict().get("movenumber")
-                tok: MoveToken
+                tok: MoveToken | None = None
                 if movenumber:
                     tok = MoveToken(
                         movenumber,
                         TokenType.MOVENUMBER,
                         Position(self._loc.linenumber, self._loc.column),
                     )
+                if not tok:
+                    return
                 whitemove = match.groupdict().get("whitemove")
                 if whitemove:
                     tok.twhitemove = whitemove
@@ -175,7 +177,7 @@ class Lexer:
                     tok.tblackmove = blackmove
                 blackcomment = match.groupdict().get("blackcomment")
                 if blackcomment:
-                    tok.blackcomment = blackcomment
+                    tok.tblackmovecomment = blackcomment
                 self._tokens.append(tok)
                 self._buffer_pos += match.end()
             else:
