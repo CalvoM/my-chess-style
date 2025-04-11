@@ -958,6 +958,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/87/4b/b5023905576b960483207ab6506694101c594c18577e5a36a7189823015e/kagglehub-0.3.11-py3-none-any.whl", hash = "sha256:875f5bcfbda64f7e5ace96f4b2c8af5f9952ecbf8820e156300e8563ac177fc4", size = 63420 },
 ]
 
+[package.optional-dependencies]
+pandas-datasets = [
+    { name = "pandas" },
+]
+
 [[package]]
 name = "kiwisolver"
 version = "1.4.8"
@@ -1131,7 +1136,7 @@ commit = [
 ]
 data-training = [
     { name = "jupyterlab" },
-    { name = "kagglehub" },
+    { name = "kagglehub", extra = ["pandas-datasets"] },
     { name = "matplotlib" },
     { name = "mglearn" },
     { name = "notebook" },
@@ -1170,7 +1175,7 @@ requires-dist = [
 commit = [{ name = "pre-commit", specifier = ">=4.2.0" }]
 data-training = [
     { name = "jupyterlab", specifier = ">=4.4.0" },
-    { name = "kagglehub", specifier = ">=0.3.11" },
+    { name = "kagglehub", extras = ["pandas-datasets"], specifier = ">=0.3.11" },
     { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "mglearn", specifier = ">=0.2.0" },
     { name = "notebook", specifier = ">=7.4.0" },
