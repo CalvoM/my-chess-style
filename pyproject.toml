@@ -32,6 +32,7 @@ data_training = [
   "scikit-learn>=1.6.1",
   "scipy>=1.15.2",
   "kagglehub[pandas-datasets]>=0.3.11",
+  "imbalanced-learn>=0.13.0",
 ]
 dev = [
   "django-stubs>=5.1.3",
