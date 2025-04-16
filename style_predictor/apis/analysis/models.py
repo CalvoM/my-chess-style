@@ -10,5 +10,5 @@ class TaskResult(TimeStampedModel):
     status = models.CharField(max_length=50)
     result = HStoreField()
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         db_table: str = "my_chess_style_task_result"

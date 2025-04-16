@@ -18,6 +18,6 @@ class PGNFileUpload(TimeStampedModel):
             return " "
         return self.file.name
 
-    class Meta:
-        db_table = "pgn_file_upload"
-        verbose_name_plural = "pgnFileUploads"
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
+        db_table: str = "pgn_file_upload"
+        verbose_name_plural: str = "pgnFileUploads"

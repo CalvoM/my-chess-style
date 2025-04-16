@@ -1,11 +1,18 @@
-from typing import Any
+from uuid import UUID
 from celery import shared_task
 from celery.signals import task_postrun
 from style_predictor.apis.analysis.models import TaskResult
+from style_predictor.apis.pgn.models import PGNFileUpload
 
 
-@shared_task
-def analyze_games(session_id) -> Any:
+@shared_task(name="pgn_analyze_games")
+def pgn_analyze_games(session_id: UUID) -> dict[str, str]:
+    file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
+    return {"answer": str(session_id)}
+
+
+@shared_task(name="pgn_determine_chess_playing_style")
+def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
     return {"answer": str(session_id)}
 
 
