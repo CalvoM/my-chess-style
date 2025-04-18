@@ -5,6 +5,16 @@ from style_predictor.apis.analysis.models import TaskResult
 from style_predictor.apis.pgn.models import PGNFileUpload
 
 
+@shared_task(name="pgn_get_chess_com_games_by_user")
+def pgn_get_chess_com_games_by_user(username: str):
+    pass
+
+
+@shared_task(name="pgn_get_lichess_games_by_user")
+def pgn_get_lichess_games_by_user(username: str):
+    pass
+
+
 @shared_task(name="pgn_analyze_games")
 def pgn_analyze_games(session_id: UUID) -> dict[str, str]:
     file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
