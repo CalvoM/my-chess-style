@@ -18,7 +18,7 @@ repos:
     rev: "v0.9.9"
     hooks:
       - id: ruff
-        entry: ruff check --select I
+        entry: ruff check --select I --fix
         types_or: [python, pyi]
       - id: ruff-format
         types_or: [python, pyi]
@@ -32,3 +32,13 @@ repos:
     hooks:
       - id: uv-export
       - id: uv-sync
+  - repo: local
+    hooks:
+      - id: django_generate_openapi
+        name: Generate openapi json file
+        entry: uv run python manage.py generate_openapi
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [post-commit]
+        always_run: true

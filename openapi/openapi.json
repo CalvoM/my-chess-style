@@ -1,0 +1,173 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "My Chess Style API",
+    "version": "1.0.0",
+    "description": "\nWelcome to the *My Chess Style API*.\n\n`My Chess Style` is a machine learning model that seeks to determine a player's\nplaying style. <br>\nIt is an ambitious project since I have no knowledge of ML, so praying for me and wish me luck.\n"
+  },
+  "paths": {
+    "/api/v1/pgn/upload": {
+      "post": {
+        "operationId": "style_predictor_apis_pgn_api_file_upload",
+        "summary": "File Upload",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Clients upload files with games.\n\n@body\n\n<b>:usernames:</b> List of usernames used by client in the games.\n\n<b>:png_file:</b> File with games, either archive/compressed file or .pgn file.",
+        "tags": [
+          "pgn"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "title": "MultiPartBodyParams",
+                "type": "object",
+                "properties": {
+                  "usernames": {
+                    "title": "Usernames",
+                    "type": "string"
+                  },
+                  "pgn_file": {
+                    "format": "binary",
+                    "title": "Pgn File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "usernames",
+                  "pgn_file"
+                ]
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/pgn/external_user/": {
+      "post": {
+        "operationId": "style_predictor_apis_pgn_api_external_user",
+        "summary": "External User",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get games by users from various chess platforms( currently Lichess, Chess.com)\n\n@body\n\n<b>:external_user:</b> Details of the user - username and platform",
+        "tags": [
+          "pgn"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalUser"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/analysis/status/{status_id}": {
+      "get": {
+        "operationId": "style_predictor_apis_analysis_api_get_analysis_status",
+        "summary": "Get Analysis Status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "status_id",
+            "schema": {
+              "title": "Status Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "analysis"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FileUploadIn": {
+        "properties": {
+          "usernames": {
+            "title": "Usernames",
+            "type": "string"
+          }
+        },
+        "required": [
+          "usernames"
+        ],
+        "title": "FileUploadIn",
+        "type": "object"
+      },
+      "MessageError": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MessageError",
+        "type": "object"
+      },
+      "ExternalUser": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "platform": {
+            "default": "chess.com",
+            "enum": [
+              "lichess",
+              "chess.com"
+            ],
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "ExternalUser",
+        "type": "object"
+      }
+    }
+  },
+  "servers": []
+}
