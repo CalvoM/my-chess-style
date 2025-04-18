@@ -1,6 +1,7 @@
 from ninja import NinjaAPI
-from style_predictor.apis.pgn.api import router as pgn_router
+
 from style_predictor.apis.analysis.api import router as analysis_router
+from style_predictor.apis.pgn.api import router as pgn_router
 
 api_description = """
 Welcome to the *My Chess Style API*.

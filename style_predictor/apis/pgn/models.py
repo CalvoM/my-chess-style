@@ -1,7 +1,9 @@
-from typing import override
-from django.db import models
-from django.contrib.auth.models import User
 import uuid
+from typing import override
+
+from django.contrib.auth.models import User
+from django.db import models
+
 from style_predictor.apis.base_model import TimeStampedModel
 
 

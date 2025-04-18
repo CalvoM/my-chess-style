@@ -1,6 +1,8 @@
 from uuid import UUID
+
 from celery import shared_task
 from celery.signals import task_postrun
+
 from style_predictor.apis.analysis.models import TaskResult
 from style_predictor.apis.pgn.models import PGNFileUpload
 

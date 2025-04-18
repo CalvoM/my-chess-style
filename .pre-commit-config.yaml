@@ -18,7 +18,11 @@ repos:
     rev: "v0.9.9"
     hooks:
       - id: ruff
+        entry: ruff check --select I
+        types_or: [python, pyi]
       - id: ruff-format
+        types_or: [python, pyi]
+      - id: ruff
   - repo: https://github.com/PyCQA/bandit
     rev: "1.8.3"
     hooks:

@@ -1,7 +1,9 @@
-from django.db import models
-from style_predictor.apis.base_model import TimeStampedModel
-from django.contrib.postgres.fields import HStoreField
 import uuid
+
+from django.contrib.postgres.fields import HStoreField
+from django.db import models
+
+from style_predictor.apis.base_model import TimeStampedModel
 
 
 class TaskResult(TimeStampedModel):

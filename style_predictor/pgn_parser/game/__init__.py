@@ -2,6 +2,7 @@ __all__ = ("PGNGame",)
 
 from style_predictor.pgn_parser.file_processing.lexer import Lexer, Token
 from style_predictor.pgn_parser.file_processing.parser import Parser
+
 from .game import PGNGame
 
 

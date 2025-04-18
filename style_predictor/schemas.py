@@ -1,6 +1,7 @@
-from dataclasses import dataclass
 import datetime
+from dataclasses import dataclass
 from typing import Literal
+
 from ninja import Schema
 
 SupportedPlatforms = Literal["lichess", "chess.com"]

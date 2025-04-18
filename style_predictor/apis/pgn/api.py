@@ -1,30 +1,29 @@
 import inspect
 import json
+import logging
 import os
+import re
 import time
+import uuid
 from typing import Any
+
+import berserk
+import requests
 from berserk.exceptions import ResponseError
 from celery.result import AsyncResult
+from chessdotcom import ChessDotComClient, ChessDotComClientError
 from django.http import HttpRequest
+from dotenv import load_dotenv
 from ninja import File, Form, Router, UploadedFile
-import berserk
-import uuid
-import logging
-import re
-
-import requests
 
 from style_predictor.apis.pgn.models import PGNFileUpload
 from style_predictor.schemas import (
-    FileUploadIn,
     ExternalUser,
-    MessageError,
+    FileUploadIn,
     LichessGame,
+    MessageError,
 )
 from style_predictor.tasks import pgn_analyze_games as analyze_games
-from chessdotcom import ChessDotComClient, ChessDotComClientError
-from dotenv import load_dotenv
-
 
 router = Router(tags=["pgn"])
 LOG = logging.getLogger(__name__)
