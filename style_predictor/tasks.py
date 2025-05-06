@@ -1,3 +1,5 @@
+import json
+from typing import Any
 from uuid import UUID
 
 from celery import current_app, shared_task
@@ -5,12 +7,15 @@ from celery.signals import task_postrun
 from django.core.files.base import ContentFile
 from django.db import transaction
 
-from style_predictor.apis.analysis.models import TaskResult
+import style_predictor.constants as constants
+from style_predictor.apis.analysis.models import AnalysisStage, TaskResult
 from style_predictor.apis.pgn.models import PGNFileUpload
 from style_predictor.apis.pgn.utils import get_chess_dot_com_games, get_lichess_games
+from style_predictor.pgn_parser.game import get_games
+from style_predictor.pgn_parser.game.game import PGNGame
 
 
-@shared_task(name="pgn_get_chess_com_games_by_user")
+@shared_task(name=constants.GET_CHESS_COM_TASK)
 def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
     pgn_data: str = get_chess_dot_com_games(username)
     upload_file = PGNFileUpload(
@@ -21,14 +26,12 @@ def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
     upload_file.file.save(str(session_id), ContentFile(pgn_data))
     upload_file.save()
     transaction.on_commit(
-        lambda: current_app.send_task(
-            "pgn_analyze_games", kwargs={"session_id": session_id}
-        )
+        lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
     )
     return {"result": str(session_id)}
 
 
-@shared_task(name="pgn_get_lichess_games_by_user")
+@shared_task(name=constants.GET_LICHESS_TASK)
 def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
     pgn_data: str = get_lichess_games(username)
     upload_file = PGNFileUpload(
@@ -39,28 +42,43 @@ def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
     upload_file.file.save(str(session_id), ContentFile(pgn_data))
     upload_file.save()
     transaction.on_commit(
-        lambda: current_app.send_task(
-            "pgn_analyze_games", kwargs={"session_id": session_id}
-        )
+        lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
     )
     return {"result": str(session_id)}
 
 
-@shared_task(name="pgn_analyze_games")
-def pgn_analyze_games(session_id: UUID) -> dict[str, str]:
+@shared_task(name=constants.ANALYZE_GAMES_TASK)
+def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
-    return {"result": str(session_id)}
+    content: str = ""
+    games: list[PGNGame] = list()
+    with open(file_obj.file.path, "r") as f:
+        content = f.read()
+    games = [json.loads(g.to_json()) for g in get_games(content)]
+    return {"result": games}
 
 
-@shared_task(name="pgn_determine_chess_playing_style")
+@shared_task(name=constants.CHESS_STYLE_TASK)
 def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
     return {"result": str(session_id)}
 
 
 @task_postrun.connect
 def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extras):
-    print(args, task_id, state, retval)
     t = TaskResult(
-        task_id=task_id, status=state, result=retval, session_id=retval["result"]
+        task_id=task_id,
+        status=state,
+        result=retval,
+        session_id=retval["result"],
     )
+    match sender.name:
+        case constants.GET_LICHESS_TASK | constants.GET_CHESS_COM_TASK:
+            t.stage = AnalysisStage.FILE_UPLOAD
+        case constants.ANALYZE_GAMES_TASK:
+            t.stage = AnalysisStage.GAME
+            t.session_id = args[0]
+        case constants.CHESS_STYLE_TASK:
+            t.stage = AnalysisStage.CHESS_STYLE
+        case _:
+            pass
     t.save()
