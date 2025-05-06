@@ -7,9 +7,10 @@ from style_predictor.pgn_parser.exceptions import PGNLexerError
 
 movetext_pattern = re.compile(
     r"(?P<movenumber>\d+\.{1,3})\s*"
-    r"(?P<whitemove>[a-hxRNBQKO1-8#+=]{2,}+|O-O-O[#+]?|O-O[#+]?)?\s*"
+    r"(?P<whitemove>[a-hxRNBQKO1-8#+=]{2,}|O-O-O[#+]?|O-O[#+]?)?\s*"
     r"(?P<whitecomment>\{[^}]*\})?\s*"
-    r"(?P<blackmove>[a-hxRNBQKO1-8#+=]{2,}+|O-O-O|O-O)?\s*"
+    r"(?:(?P<black_num>\d+)\.\.\.)?\s*"  # Optional black move number
+    r"(?P<blackmove>[a-hxRNBQKO1-8#+=]{2,}|O-O-O[#+]?|O-O[#+]?)?\s*"
     r"(?P<blackcomment>\{[^}]*\})?\s*"
 )
 game_term_pattern = re.compile(r"(?P<gameterm>\*|0-1|1/2-1/2|1-0)")
