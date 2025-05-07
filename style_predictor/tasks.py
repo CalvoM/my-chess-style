@@ -28,7 +28,7 @@ def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
     transaction.on_commit(
         lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
     )
-    return {"result": str(session_id)}
+    return {"session_id": str(session_id)}
 
 
 @shared_task(name=constants.GET_LICHESS_TASK)
@@ -44,39 +44,42 @@ def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
     transaction.on_commit(
         lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
     )
-    return {"result": str(session_id)}
+    return {"session_id": str(session_id)}
 
 
 @shared_task(name=constants.ANALYZE_GAMES_TASK)
 def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
     content: str = ""
-    games: list[PGNGame] = list()
-    with open(file_obj.file.path, "r") as f:
+    games: list[PGNGame] = []
+    file_obj.file.open("r")
+    with file_obj.file.open("r") as f:
         content = f.read()
     games = [json.loads(g.to_json()) for g in get_games(content)]
-    return {"result": games}
+    return {"result": games, "session_id": str(session_id)}
 
 
 @shared_task(name=constants.CHESS_STYLE_TASK)
 def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
-    return {"result": str(session_id)}
+    return {"session_id": str(session_id)}
 
 
 @task_postrun.connect
 def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extras):
+    res = None
+    if result := retval.get("result"):
+        res = {"result": result}
     t = TaskResult(
         task_id=task_id,
         status=state,
-        result=retval,
-        session_id=retval["result"],
+        result=res,
+        session_id=retval.get("session_id"),
     )
     match sender.name:
         case constants.GET_LICHESS_TASK | constants.GET_CHESS_COM_TASK:
             t.stage = AnalysisStage.FILE_UPLOAD
         case constants.ANALYZE_GAMES_TASK:
             t.stage = AnalysisStage.GAME
-            t.session_id = args[0]
         case constants.CHESS_STYLE_TASK:
             t.stage = AnalysisStage.CHESS_STYLE
         case _:

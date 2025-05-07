@@ -12,8 +12,8 @@ from ninja import File, Form, Router, UploadedFile
 
 from style_predictor.apis.pgn.models import PGNFileUpload
 from style_predictor.apis.pgn.utils import (
-    is_chess_dot_com_player_exists,
-    is_lichess_player_exists,
+    does_chess_dot_com_player_exists,
+    does_lichess_player_exists,
 )
 from style_predictor.schemas import (
     ExternalUser,
@@ -52,9 +52,8 @@ def file_upload(
         file=pgn_file, user=None, session_id=session_id, usernames=usernames.usernames
     )
     upload_file.save()
-    task: AsyncResult[Any] = analyze_games.delay(session_id)
+    _ = analyze_games.delay(session_id)
     return {"status_id": str(session_id)}
-    return {"uploaded_details": task.task_id}
 
 
 @router.post("/external_user/", response={200: Any, 404: MessageError})
@@ -67,7 +66,7 @@ def external_user(request: HttpRequest, external_user: ExternalUser):
     """
     if external_user.platform == "chess.com":
         try:
-            is_chess_dot_com_player_exists(external_user.username)
+            does_chess_dot_com_player_exists(external_user.username)
             session_id = uuid.uuid4()
             _task: AsyncResult[Any] = pgn_get_chess_com_games_by_user.delay(
                 session_id, external_user.username
@@ -78,7 +77,7 @@ def external_user(request: HttpRequest, external_user: ExternalUser):
 
     elif external_user.platform == "lichess":
         try:
-            is_lichess_player_exists(external_user.username)
+            does_lichess_player_exists(external_user.username)
             session_id = uuid.uuid4()
             _task: AsyncResult[Any] = pgn_get_lichess_games_by_user.delay(
                 session_id, external_user.username

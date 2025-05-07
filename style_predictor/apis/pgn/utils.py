@@ -48,18 +48,18 @@ def dict_to_class(cls: type[LichessGame], data: dict[str, Any]) -> LichessGame:
     return cls(**snake_data)
 
 
-def is_lichess_player_exists(username: str):
+def does_lichess_player_exists(username: str):
     lichessClient.users.get_public_data(username)
     return True
 
 
 def get_lichess_games(username: str) -> str:
-    games: list[str] = list()
+    games: list[str] = []
     games = list(lichessClient.games.export_by_player(username, as_pgn=True))
     return "\r\n".join(games)
 
 
-def is_chess_dot_com_player_exists(username: str):
+def does_chess_dot_com_player_exists(username: str):
     chessdotcomClient.get_player_profile(username)
     return True
 
@@ -68,16 +68,16 @@ def get_chess_dot_com_games(username: str) -> str:
     all_pgns: str = ""
     response = chessdotcomClient.get_player_game_archives(username)
     archives: dict[str, list[str]] = response.json
-    for archive in archives.get("archives", [""]):
-        resp = requests.get(archive + "/pgn", headers=headers, timeout=60)
+    for archive in archives.get("archives", []):
+        resp = requests.get(f"{archive}/pgn", headers=headers, timeout=60)
         if resp.status_code == 200:
-            all_pgns += resp.text + "\n\n"
+            all_pgns += f"{resp.text}\n\n"
         elif resp.status_code == 429:
             LOG.warning(f"Rate limiting encountered for {archive}")
             time.sleep(45)
-            resp = requests.get(archive + "/pgn", headers=headers, timeout=60)
+            resp = requests.get(f"{archive}/pgn", headers=headers, timeout=60)
             if resp.status_code == 200:
-                all_pgns += resp.text + "\n\n"
+                all_pgns += f"{resp.text}\n\n"
             else:
-                LOG.error(f"Failed to fetch url {archive + '/pgn'}")
+                LOG.error(f"Failed to fetch url {archive}/pgn")
     return all_pgns

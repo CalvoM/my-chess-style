@@ -88,34 +88,26 @@ ErrPgnFile = """
 class TestLexer:
     def test_lex_tags_only(self):
         tokens = Lexer(PgnFileTagsOnly).lex()
-        if tokens:
-            assert len(tokens) == 48  # nosec
-            assert (
-                len([token for token in tokens if token.ttype == TokenType.LSQB]) == 12
-            )  # nosec
-            assert (
-                len([token for token in tokens if token.ttype == TokenType.MOVENUMBER])
-                == 0
-            )  # nosec
+        assert len(tokens) == 48  # nosec
+        assert len([token for token in tokens if token.ttype == TokenType.LSQB]) == 12  # nosec
+        assert not [token for token in tokens if token.ttype == TokenType.MOVENUMBER]  # nosec
 
     def test_lex_with_moves(self):
         tokens = Lexer(PgnFileWithMoves).lex()
-        if tokens:
-            assert len(tokens) == 72  # nosec
-            assert (
-                len([token for token in tokens if token.ttype == TokenType.MOVENUMBER])
-                == 23
-            )  # nosec
-            assert [token for token in tokens if token.ttype == TokenType.GAMETERM]  # nosec
+        assert len(tokens) == 72  # nosec
+        assert (
+            len([token for token in tokens if token.ttype == TokenType.MOVENUMBER])
+            == 23
+        )  # nosec
+        assert [token for token in tokens if token.ttype == TokenType.GAMETERM]  # nosec
 
     def test_lex_with_moves_separated(self):
         tokens = Lexer(PgnFileWithSeparatedMoves).lex()
-        if tokens:
-            assert len(tokens) == 104  # nosec
-            assert (
-                len([token for token in tokens if token.ttype == TokenType.MOVENUMBER])
-                == 19
-            )  # nosec
+        assert len(tokens) == 104  # nosec
+        assert (
+            len([token for token in tokens if token.ttype == TokenType.MOVENUMBER])
+            == 19
+        )  # nosec
 
     def test_lex_with_error(self):
         with pytest.raises(PGNLexerError) as pgn_err:
