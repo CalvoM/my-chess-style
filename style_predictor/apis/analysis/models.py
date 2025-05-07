@@ -20,7 +20,7 @@ class TaskResult(TimeStampedModel):
     stage = models.IntegerField(
         choices=AnalysisStage.choices, default=AnalysisStage.FILE_UPLOAD
     )
-    result = HStoreField()
+    result = HStoreField(null=True)
 
     class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         db_table: str = "my_chess_style_task_result"
