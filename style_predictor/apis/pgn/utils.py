@@ -1,4 +1,3 @@
-import inspect
 import logging
 import os
 import re
@@ -36,7 +35,7 @@ def camel_to_snake(name: str):
 
 
 def dict_to_class(cls: type[LichessGame], data: dict[str, Any]) -> LichessGame:
-    cls_fields = list(dict(inspect.getmembers(cls))["__dataclass_fields__"].keys())
+    cls_fields = list(cls.__dataclass_fields__.keys())
     snake_data = {camel_to_snake(k): v for k, v in data.items()}
     excluded_fields = list(set(snake_data.keys()) - set(cls_fields))
     LOG.warning(f"Unsupported Lichess fields: {excluded_fields}")
