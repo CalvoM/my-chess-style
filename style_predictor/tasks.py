@@ -15,9 +15,9 @@ from style_predictor.pgn_parser.game import get_games
 from style_predictor.pgn_parser.game.game import PGNGame
 
 
-@shared_task(name=constants.GET_CHESS_COM_TASK)
-def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
-    pgn_data: str = get_chess_dot_com_games(username)
+def save_file_and_queue_task(
+    session_id: UUID, username: str, pgn_data: str
+) -> dict[str, Any]:
     upload_file = PGNFileUpload(
         user=None,
         session_id=session_id,
@@ -26,25 +26,21 @@ def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
     upload_file.file.save(str(session_id), ContentFile(pgn_data))
     upload_file.save()
     transaction.on_commit(
-        lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
+        lambda: current_app.send_task(constants.ANALYZE_GAMES_TASK, args=[session_id])
     )
     return {"session_id": str(session_id)}
+
+
+@shared_task(name=constants.GET_CHESS_COM_TASK)
+def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
+    pgn_data: str = get_chess_dot_com_games(username)
+    return save_file_and_queue_task(session_id, username, pgn_data)
 
 
 @shared_task(name=constants.GET_LICHESS_TASK)
 def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
     pgn_data: str = get_lichess_games(username)
-    upload_file = PGNFileUpload(
-        user=None,
-        session_id=session_id,
-        usernames=username,
-    )
-    upload_file.file.save(str(session_id), ContentFile(pgn_data))
-    upload_file.save()
-    transaction.on_commit(
-        lambda: current_app.send_task("pgn_analyze_games", args=[session_id])
-    )
-    return {"session_id": str(session_id)}
+    return save_file_and_queue_task(session_id, username, pgn_data)
 
 
 @shared_task(name=constants.ANALYZE_GAMES_TASK)
@@ -66,9 +62,7 @@ def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
 
 @task_postrun.connect
 def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extras):
-    res = None
-    if result := retval.get("result"):
-        res = {"result": result}
+    res = {"result": result} if (result := retval.get("result")) else None
     t = TaskResult(
         task_id=task_id,
         status=state,
