@@ -10,6 +10,7 @@ valid_pgn_tags = (
     "Stage",
     "Board",
     "Site",
+    "Link",
     "Date",
     "Time",
     "UTCTime",
@@ -40,6 +41,7 @@ valid_pgn_tags = (
     "Mode",
     "PlyCount",
     "Result",
+    "CurrentPosition",
 )
 
 
