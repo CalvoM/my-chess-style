@@ -3,8 +3,15 @@ from typing import override
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from style_predictor.apis.base_model import TimeStampedModel
+
+
+class FileSource(models.IntegerChoices):
+    CHESSDOTCOM = 1, _("CHESSDOTCOM")
+    LICHESS = 2, _("LICHESS")
+    FILE = 3, _("FILE")
 
 
 class PGNFileUpload(TimeStampedModel):
@@ -13,6 +20,7 @@ class PGNFileUpload(TimeStampedModel):
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     session_id = models.UUIDField(default=uuid.uuid4, editable=False)
     usernames = models.TextField(null=True, blank=True)
+    source = models.IntegerField(choices=FileSource.choices, default=FileSource.FILE)
 
     @override
     def __str__(self) -> str:
