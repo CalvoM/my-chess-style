@@ -13,7 +13,7 @@ router = Router(tags=["analysis"])
 def get_analysis_status(request: HttpRequest, status_id: str):
     task_res = list(TaskResult.objects.filter(session_id=uuid.UUID(status_id)))
     data: dict[str, Any] = {
-        res.get_stage_display().lower(): res.result.get("result", "")
+        res.get_stage_display().lower(): (res.result or {}).get("result", "")
         for res in task_res
     }
 

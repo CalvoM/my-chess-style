@@ -1,4 +1,3 @@
-import json
 from typing import Any
 from uuid import UUID
 
@@ -30,26 +29,47 @@ def save_file_and_queue_task(
 
 
 def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any]:
-    games = [json.loads(g.to_json()) for g in pgn_games]
-    analysis = {}
-    analysis["count"] = len(games)
-    analysis["win_count"] = len(
-        [
-            1
-            for game in games
-            if game["_tags"]["White"] in username
-            and (game["_tags"]["Termination"]) == "1-0"
-        ]
-    )
-    analysis["win_count"] += len(
-        [
-            1
-            for game in games
-            if game["_tags"]["Black"] in username
-            and (game["_tags"]["Termination"]) == "0-1"
-        ]
-    )
-    return analysis
+    names = {n.strip() for n in username.split(",")}
+    total = len(pgn_games)
+    wins = losses = draws = opp_rating_sum = 0
+
+    for g in pgn_games:
+        tags = g._tags
+        result = tags["Result"]
+        white, black = tags["White"], tags["Black"]
+
+        is_white = white in names
+        is_black = black in names
+
+        # win/loss/draw
+        if result == constants.DRAW:
+            draws += 1
+        elif result == constants.WHITE_WIN:
+            wins += is_white
+            losses += is_black
+        elif result == constants.BLACK_WIN:
+            wins += is_black
+            losses += is_white
+
+        # opponent rating
+        if is_white and tags["BlackElo"] != "?":
+            opp_rating_sum += int(tags["BlackElo"])
+        elif is_black and tags["WhiteElo"] != "?":
+            opp_rating_sum += int(tags["WhiteElo"])
+
+    avg_opp = opp_rating_sum / total if total else 0
+    return {
+        "count": total,
+        "win_count": wins,
+        "loss_count": losses,
+        "draw_count": draws,
+        "opponents_avg_rating": avg_opp,
+    }
+
+
+@shared_task(name=constants.GET_FILE_GAMES_TASK)
+def pgn_get_games_from_file(session_id: UUID, usernames: str, pgn_data: str):
+    return save_file_and_queue_task(session_id, usernames, pgn_data, FileSource.FILE)
 
 
 @shared_task(name=constants.GET_CHESS_COM_TASK)
@@ -70,14 +90,13 @@ def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
 def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
     content: str = ""
-    games: list[PGNGame] = []
-    file_obj.file.open("r")
+    # games: list[PGNGame] = []
     with file_obj.file.open("r") as f:
         content = f.read()
     pgn_games = get_games(content)
     # games = [json.loads(g.to_json()) for g in pgn_games]
-    games = get_games_analysis(pgn_games, file_obj.usernames)
-    return {"result": games, "session_id": str(session_id)}
+    analysis_result = get_games_analysis(pgn_games, file_obj.usernames)
+    return {"result": analysis_result, "session_id": str(session_id)}
 
 
 @shared_task(name=constants.CHESS_STYLE_TASK)

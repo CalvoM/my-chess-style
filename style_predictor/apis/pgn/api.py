@@ -10,7 +10,6 @@ from django.http import HttpRequest
 from dotenv import load_dotenv
 from ninja import File, Form, Router, UploadedFile
 
-from style_predictor.apis.pgn.models import PGNFileUpload
 from style_predictor.apis.pgn.utils import (
     does_chess_dot_com_player_exists,
     does_lichess_player_exists,
@@ -21,10 +20,8 @@ from style_predictor.schemas import (
     MessageError,
 )
 from style_predictor.tasks import (
-    pgn_analyze_games as analyze_games,
-)
-from style_predictor.tasks import (
     pgn_get_chess_com_games_by_user,
+    pgn_get_games_from_file,
     pgn_get_lichess_games_by_user,
 )
 
@@ -48,11 +45,9 @@ def file_upload(
     """
     session_id = uuid.uuid4()
     pgn_file.name = str(session_id)
-    upload_file = PGNFileUpload(
-        file=pgn_file, user=None, session_id=session_id, usernames=usernames.usernames
+    _task: AsyncResult[Any] = pgn_get_games_from_file.delay(
+        session_id, usernames.usernames, pgn_file.read().decode()
     )
-    upload_file.save()
-    _ = analyze_games.delay(session_id)
     return {"status_id": str(session_id)}
 
 
