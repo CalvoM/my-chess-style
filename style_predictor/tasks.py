@@ -1,17 +1,48 @@
+from collections import Counter
 from typing import Any
 from uuid import UUID
 
 from celery import current_app, shared_task
 from celery.signals import task_postrun
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import connection, transaction
 
 import style_predictor.constants as constants
 from style_predictor.apis.analysis.models import AnalysisStage, TaskResult
-from style_predictor.apis.pgn.models import FileSource, PGNFileUpload
+from style_predictor.apis.pgn.models import ChessOpening, FileSource, PGNFileUpload
 from style_predictor.apis.pgn.utils import get_chess_dot_com_games, get_lichess_games
 from style_predictor.pgn_parser.game import get_games
 from style_predictor.pgn_parser.game.game import PGNGame
+
+
+def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
+    res: list[tuple[str, str]] = []
+    row = ()
+    for eco_code, move_str in eco_codes:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT eco_code, full_name, moves
+                FROM my_chess_style_chess_opening
+                WHERE %s LIKE moves || '%%'
+                ORDER BY LENGTH(moves) DESC
+                LIMIT 1;
+            """,
+                [move_str],
+            )
+            row = cursor.fetchone()
+            if row:
+                res.append((row[0], row[1]))
+            else:
+                code = list(ChessOpening.objects.filter(eco_code=eco_code))[0]
+                res.append((eco_code, code.full_name))
+                print(f"No approx. for {eco_code} using {code.full_name}")
+    eco_counter = Counter(res)
+    final_mapping: list[tuple[str, str, int]] = []
+    for eco in eco_counter.most_common(5):
+        final_mapping.append((*eco[0], eco[1]))
+
+    return final_mapping
 
 
 def save_file_and_queue_task(
@@ -32,11 +63,14 @@ def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any
     names = {n.strip() for n in username.split(",")}
     total = len(pgn_games)
     wins = losses = draws = opp_rating_sum = 0
+    opening_mapper: list[tuple[str, str]] = []
 
     for g in pgn_games:
-        tags = g._tags
-        result = tags["Result"]
-        white, black = tags["White"], tags["Black"]
+        tags = g.tag_pairs
+        result = tags.get("Result", "?")
+        white, black = tags.get("White", ""), tags.get("Black", "")
+        if eco_code := tags.get("ECO", None):
+            opening_mapper.append((eco_code, " ".join([str(move) for move in g.moves])))
 
         is_white = white in names
         is_black = black in names
@@ -50,12 +84,14 @@ def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any
         elif result == constants.BLACK_WIN:
             wins += is_black
             losses += is_white
+        else:
+            continue
 
         # opponent rating
-        if is_white and tags["BlackElo"] != "?":
-            opp_rating_sum += int(tags["BlackElo"])
-        elif is_black and tags["WhiteElo"] != "?":
-            opp_rating_sum += int(tags["WhiteElo"])
+        if is_white and tags.get("BlackElo") != "?":
+            opp_rating_sum += int(tags.get("BlackElo", "0"))
+        elif is_black and tags.get("WhiteElo") != "?":
+            opp_rating_sum += int(tags.get("WhiteElo", "0"))
 
     avg_opp = opp_rating_sum / total if total else 0
     return {
@@ -64,6 +100,7 @@ def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any
         "loss_count": losses,
         "draw_count": draws,
         "opponents_avg_rating": avg_opp,
+        "openings": map_eco_code(opening_mapper),
     }
 
 

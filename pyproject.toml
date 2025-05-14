@@ -10,10 +10,13 @@ dependencies = [
   "chess-com>=3.11.1",
   "django>=5.2",
   "django-ninja>=1.4.0",
+  "fastparquet>=2024.11.0",
+  "huggingface-hub>=0.31.2",
   "matplotlib>=3.10.1",
   "numpy>=2.2.4",
   "pandas>=2.2.3",
   "psycopg2>=2.9.10",
+  "pyarrow>=20.0.0",
   "python-dotenv>=1.1.0",
   "requests>=2.32.3",
   "scikit-learn>=1.6.1",
@@ -47,6 +50,7 @@ dev = [
   "pytest>=8.3.5",
   "ruff>=0.11.3",
   "types-requests>=2.32.0.20250328",
+  "watchdog>=6.0.0",
 ]
 
 [tool.pytest.ini_options]

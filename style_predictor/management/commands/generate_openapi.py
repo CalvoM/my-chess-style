@@ -18,7 +18,7 @@ class Command(BaseCommand):
             with open(output_path, "w") as f:
                 json.dump(schema, f, indent=2)
             self.stdout.write(
-                self.style.SUCCESS(f"OpenAPI schema saved to {output_path}")
+                self.style.SUCCESS(f"✅ OpenAPI schema saved to {output_path}")
             )
         else:
             self.stderr.write(f"Failed to fetch OpenAPI schema: {response.status_code}")
