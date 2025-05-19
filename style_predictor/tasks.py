@@ -1,11 +1,15 @@
-from collections import Counter
+import logging
+from collections import Counter, defaultdict
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
 from celery import current_app, shared_task
 from celery.signals import task_postrun
+from django.core.cache import cache
 from django.core.files.base import ContentFile
-from django.db import connection, transaction
+from django.db import transaction
+from django.db.models.functions import Length
 
 import style_predictor.constants as constants
 from style_predictor.apis.analysis.models import AnalysisStage, TaskResult
@@ -14,35 +18,110 @@ from style_predictor.apis.pgn.utils import get_chess_dot_com_games, get_lichess_
 from style_predictor.pgn_parser.game import get_games
 from style_predictor.pgn_parser.game.game import PGNGame
 
+LOG = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OpeningFound:
+    eco_code: str
+    full_name: str
+
+
+def get_openings_from_cache() -> list[ChessOpening]:
+    all_openings: list[ChessOpening] = cache.get(constants.OPENINGS_DB_KEY)
+    if not all_openings:
+        all_openings = list(
+            ChessOpening.objects.only("eco_code", "full_name", "moves")
+            .annotate(move_length=Length("moves"))
+            .order_by("-move_length")
+        )
+        cache.set(constants.OPENINGS_DB_KEY, all_openings)
+    return all_openings
+
+
+def find_best_opening_by_moves(
+    move_str: str, opening_bucket: dict[str, list[ChessOpening]]
+) -> OpeningFound | None:
+    parts = move_str.split(" ")
+    first_move = " ".join(parts[:2]) if len(parts) >= 2 else move_str
+    candidates = opening_bucket.get(first_move, [])
+    return next(
+        (
+            OpeningFound(opening.eco_code, opening.full_name)
+            for opening in candidates
+            if move_str.startswith(opening.moves)
+        ),
+        None,
+    )
+
+
+def bucket_openings_by_first_move(
+    openings: list[ChessOpening],
+) -> dict[str, list[ChessOpening]]:
+    buckets: dict[str, list[ChessOpening]] = defaultdict(list)
+    for opening in openings:
+        parts = opening.moves.split(" ")
+        key = " ".join(parts[:2]) if len(parts) >= 2 else opening.moves
+        buckets[key].append(opening)
+    return buckets
+
 
 def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
     res: list[tuple[str, str]] = []
-    row = ()
+    all_openings = get_openings_from_cache()
+    fallbacks = {opening.eco_code: opening.full_name for opening in all_openings}
+    opening_buckets = bucket_openings_by_first_move(all_openings)
     for eco_code, move_str in eco_codes:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT eco_code, full_name, moves
-                FROM my_chess_style_chess_opening
-                WHERE %s LIKE moves || '%%'
-                ORDER BY LENGTH(moves) DESC
-                LIMIT 1;
-            """,
-                [move_str],
-            )
-            row = cursor.fetchone()
-            if row:
-                res.append((row[0], row[1]))
-            else:
-                code = list(ChessOpening.objects.filter(eco_code=eco_code))[0]
-                res.append((eco_code, code.full_name))
-                print(f"No approx. for {eco_code} using {code.full_name}")
+        if moves_found := find_best_opening_by_moves(
+            move_str, opening_bucket=opening_buckets
+        ):
+            res.append((moves_found.eco_code, moves_found.full_name))
+        elif full_name := fallbacks.get(eco_code):
+            res.append((eco_code, full_name))
+            LOG.info(f"No approx. for {eco_code} using {full_name}")
+        else:
+            LOG.warning(f"ECO {eco_code} for {move_str[:20]=} not found.")
     eco_counter = Counter(res)
-    final_mapping: list[tuple[str, str, int]] = []
-    for eco in eco_counter.most_common(5):
-        final_mapping.append((*eco[0], eco[1]))
+    return [(*eco[0], eco[1]) for eco in eco_counter.most_common(5)]
 
-    return final_mapping
+
+def normalize_time_control(time_control: str | None) -> int:
+    if not time_control:
+        return 0
+    elif time_control in ("?", "-"):
+        return 0
+    elif "/" in time_control:
+        time = time_control.split("/")[1]
+    elif "+" in time_control:
+        time = time_control.split("+")[0]
+    elif "*" in time_control:
+        time = time_control[1:]
+    else:
+        time = time_control
+    return int(time)
+
+
+def get_avg_opponent_rating_by_time_control(
+    opponent_rating: list[tuple[int, int]],
+) -> dict[str, float]:
+    def average(ratings: list[int]) -> float:
+        return sum(ratings) / len(ratings) if ratings else 0.0
+
+    categories = {
+        "bullet": lambda t: t < constants.BULLET_TIME_LIMIT,
+        "blitz": lambda t: constants.BULLET_TIME_LIMIT
+        <= t
+        < constants.BLITZ_TIME_LIMIT,
+        "rapid": lambda t: constants.BLITZ_TIME_LIMIT <= t < constants.RAPID_TIME_LIMIT,
+        "classical": lambda t: t >= constants.RAPID_TIME_LIMIT,
+    }
+
+    results = {}
+    for name, condition in categories.items():
+        filtered = [rating for rating, time in opponent_rating if condition(time)]
+        results[name] = average(filtered)
+
+    return results
 
 
 def save_file_and_queue_task(
@@ -62,7 +141,8 @@ def save_file_and_queue_task(
 def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any]:
     names = {n.strip() for n in username.split(",")}
     total = len(pgn_games)
-    wins = losses = draws = opp_rating_sum = 0
+    wins = losses = draws = 0
+    opp_mapping: list[tuple[int, int | None]] = []
     opening_mapper: list[tuple[str, str]] = []
 
     for g in pgn_games:
@@ -88,18 +168,20 @@ def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any
             continue
 
         # opponent rating
-        if is_white and tags.get("BlackElo") != "?":
-            opp_rating_sum += int(tags.get("BlackElo", "0"))
-        elif is_black and tags.get("WhiteElo") != "?":
-            opp_rating_sum += int(tags.get("WhiteElo", "0"))
+        if norm_time := normalize_time_control(tags.get("TimeControl")):
+            if is_white and tags.get("BlackElo") != "?":
+                opp_rating = int(tags.get("BlackElo", "0"))
+                opp_mapping.append((opp_rating, norm_time))
+            elif is_black and tags.get("WhiteElo") != "?":
+                opp_rating = int(tags.get("WhiteElo", "0"))
+                opp_mapping.append((opp_rating, norm_time))
 
-    avg_opp = opp_rating_sum / total if total else 0
     return {
         "count": total,
         "win_count": wins,
         "loss_count": losses,
         "draw_count": draws,
-        "opponents_avg_rating": avg_opp,
+        "opponents_avg_rating": get_avg_opponent_rating_by_time_control(opp_mapping),
         "openings": map_eco_code(opening_mapper),
     }
 

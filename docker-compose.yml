@@ -23,6 +23,17 @@ services:
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq/
 
+  cache:
+    image: "redis:latest"
+    container_name: "my_chess_style_cache"
+    ports:
+      - "6379:6379"
+    env_file:
+      - .env
+    command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
+    volumes:
+      - cachedata:/data
+
 networks:
   default:
     external: true
@@ -30,3 +41,4 @@ networks:
 volumes:
   pgdata:
   rabbitmqdata:
+  cachedata:
