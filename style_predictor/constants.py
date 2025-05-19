@@ -6,3 +6,7 @@ CHESS_STYLE_TASK: str = "pgn_determine_chess_playing_style"
 WHITE_WIN: str = "1-0"
 BLACK_WIN: str = "0-1"
 DRAW: str = "1/2-1/2"
+OPENINGS_DB_KEY = "all_chess_openings"
+BULLET_TIME_LIMIT = 3 * 60
+BLITZ_TIME_LIMIT = 10 * 60
+RAPID_TIME_LIMIT = 60 * 60

@@ -35,8 +35,8 @@ class PGNFileUpload(TimeStampedModel):
 
 class ChessOpening(TimeStampedModel):
     eco_code = models.CharField(max_length=10)
-    full_name = models.TextField(max_length=255)
-    moves = models.TextField(max_length=512)
+    full_name = models.CharField(max_length=255)
+    moves = models.CharField(max_length=512)
 
     class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         db_table: str = "my_chess_style_chess_opening"

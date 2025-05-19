@@ -59,10 +59,11 @@ class Command(BaseCommand):
                             f"⚠️Download failed ({e}). Falling back to local {file}."
                         )
                     )
-        count = 0
+        total_count = 0
         for i in tsv_file_options:
             file = LOCAL_ECO_FILE.format(i)
             self.stdout.write(self.style.HTTP_INFO(f"Processing {file}"))
+            count = 0
             with open(file, "r", encoding="utf-8") as f:
                 for line in f:
                     if count == 0:
@@ -74,5 +75,6 @@ class Command(BaseCommand):
                         eco_code=eco_code, full_name=name, moves=moves
                     )
                     count += 1
+            total_count += count
 
-        self.stdout.write(self.style.SUCCESS(f"✅ Imported {count} openings."))
+        self.stdout.write(self.style.SUCCESS(f"✅ Imported {total_count} openings."))

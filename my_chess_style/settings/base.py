@@ -147,3 +147,10 @@ CELERY_ACCEPT_CONTENT = ["json", "pickle"]
 CELERY_RESULT_ACCEPT_CONTENT = ["json", "pickle"]
 CELERY_TASK_TRACK_STARTED = True
 CELERY_IGNORE_RESULT = False
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://:{os.getenv('CACHE_PASSWORD')}@{os.getenv('DB_HOST')}:6379",
+    }
+}
