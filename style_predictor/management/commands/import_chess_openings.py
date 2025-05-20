@@ -60,6 +60,7 @@ class Command(BaseCommand):
                         )
                     )
         total_count = 0
+        all_openings: list[ChessOpening] = []
         for i in tsv_file_options:
             file = LOCAL_ECO_FILE.format(i)
             self.stdout.write(self.style.HTTP_INFO(f"Processing {file}"))
@@ -71,10 +72,11 @@ class Command(BaseCommand):
                         count += 1
                         continue
                     eco_code, name, moves = line.strip().split("\t")
-                    _ = ChessOpening.objects.create(
-                        eco_code=eco_code, full_name=name, moves=moves
+                    all_openings.append(
+                        ChessOpening(eco_code=eco_code, full_name=name, moves=moves)
                     )
                     count += 1
             total_count += count
+        ChessOpening.objects.bulk_create(all_openings)
 
         self.stdout.write(self.style.SUCCESS(f"✅ Imported {total_count} openings."))
