@@ -1,10 +1,10 @@
 import logging
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable, NamedTuple
 from uuid import UUID
 
-from celery import current_app, shared_task
+from celery import chord, current_app, shared_task
 from celery.signals import task_postrun
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -17,8 +17,20 @@ from style_predictor.apis.pgn.models import ChessOpening, FileSource, PGNFileUpl
 from style_predictor.apis.pgn.utils import get_chess_dot_com_games, get_lichess_games
 from style_predictor.pgn_parser.game import get_games
 from style_predictor.pgn_parser.game.game import PGNGame
+from style_predictor.utils import (
+    average_rating,
+    group_openings_with_eco,
+    merge_game_objects,
+    sort_openings,
+)
 
 LOG = logging.getLogger(__name__)
+
+
+class ChessOpeningDetails(NamedTuple):
+    eco_code: str
+    full_name: str
+    number: int
 
 
 @dataclass(frozen=True)
@@ -66,7 +78,7 @@ def bucket_openings_by_first_move(
     return buckets
 
 
-def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[tuple[str, str, int]]:
+def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[ChessOpeningDetails]:
     res: list[tuple[str, str]] = []
     all_openings = get_openings_from_cache()
     fallbacks = {opening.eco_code: opening.full_name for opening in all_openings}
@@ -82,7 +94,7 @@ def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[tuple[str, str, int]]
         else:
             LOG.warning(f"ECO {eco_code} for {move_str[:20]=} not found.")
     eco_counter = Counter(res)
-    return [(*eco[0], eco[1]) for eco in eco_counter.most_common(5)]
+    return [ChessOpeningDetails(*eco[0], eco[1]) for eco in eco_counter.most_common(5)]
 
 
 def normalize_time_control(time_control: str | None) -> int:
@@ -103,11 +115,11 @@ def normalize_time_control(time_control: str | None) -> int:
 
 def get_avg_opponent_rating_by_time_control(
     opponent_rating: list[tuple[int, int]],
-) -> dict[str, float]:
+) -> dict[str, tuple[float, int]]:
     def average(ratings: list[int]) -> float:
         return sum(ratings) / len(ratings) if ratings else 0.0
 
-    categories = {
+    categories: dict[str, Callable[[int], bool]] = {
         "bullet": lambda t: t < constants.BULLET_TIME_LIMIT,
         "blitz": lambda t: constants.BULLET_TIME_LIMIT
         <= t
@@ -116,10 +128,10 @@ def get_avg_opponent_rating_by_time_control(
         "classical": lambda t: t >= constants.RAPID_TIME_LIMIT,
     }
 
-    results = {}
+    results: dict[str, tuple[float, int]] = {}
     for name, condition in categories.items():
         filtered = [rating for rating, time in opponent_rating if condition(time)]
-        results[name] = average(filtered)
+        results[name] = (average(filtered), len(filtered))
 
     return results
 
@@ -135,10 +147,12 @@ def save_file_and_queue_task(
     transaction.on_commit(
         lambda: current_app.send_task(constants.ANALYZE_GAMES_TASK, args=[session_id])
     )
-    return {"session_id": str(session_id), "result": {"file_upload": "OK"}}
+    return {"session_id": str(session_id), "result": "OK"}
 
 
-def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any]:
+def get_games_analysis(
+    session_id: UUID, pgn_games: list[PGNGame], username: str
+) -> dict[str, Any]:
     names = {n.strip() for n in username.split(",")}
     total = len(pgn_games)
     wins = losses = draws = 0
@@ -175,15 +189,20 @@ def get_games_analysis(pgn_games: list[PGNGame], username: str) -> dict[str, Any
             elif is_black and tags.get("WhiteElo") != "?":
                 opp_rating = int(tags.get("WhiteElo", "0"))
                 opp_mapping.append((opp_rating, norm_time))
-
+    openings = map_eco_code(opening_mapper)
     return {
         "count": total,
         "win_count": wins,
         "loss_count": losses,
         "draw_count": draws,
         "opponents_avg_rating": get_avg_opponent_rating_by_time_control(opp_mapping),
-        "openings": map_eco_code(opening_mapper),
+        "openings": openings,
+        "session_id": str(session_id),
     }
+
+
+def split_pgn_into_games(pgn_text: str) -> list[str]:
+    return [f"[Event {g}" for g in pgn_text.split("[Event ")[1:]]
 
 
 @shared_task(name=constants.GET_FILE_GAMES_TASK)
@@ -212,10 +231,50 @@ def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     # games: list[PGNGame] = []
     with file_obj.file.open("r") as f:
         content = f.read()
-    pgn_games = get_games(content)
-    # games = [json.loads(g.to_json()) for g in pgn_games]
-    analysis_result = get_games_analysis(pgn_games, file_obj.usernames)
-    return {"result": analysis_result, "session_id": str(session_id)}
+    games = split_pgn_into_games(content)
+    chunk_size = 100
+    chunks = [games[i : i + chunk_size] for i in range(0, len(games), chunk_size)]
+    res = chord(
+        [
+            analyze_pgn_chunk.s(session_id, file_obj.usernames, chunk, i)
+            for i, chunk in enumerate(chunks)
+        ],
+        finalize_analysis.s(),
+    ).apply_async()
+    return {"result": res.id, "session_id": str(session_id)}
+
+
+@shared_task(name=constants.FINALIZE_ANALYSIS_TASK)
+def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
+    result = {}
+    session_id = objects[0].get("session_id", "")
+    for d in objects:
+        if d.get("session_id") != session_id:
+            LOG.warning(
+                f"All processed objects must have the same ID: {session_id}. We found {d.get('session_id')}"
+            )
+        result = merge_game_objects(result, d)
+    result["openings"] = sort_openings(
+        group_openings_with_eco(result.get("openings", []))
+    )
+    result["opponents_avg_rating"] = average_rating(
+        result.get("opponents_avg_rating", {})
+    )
+    return {"session_id": str(session_id), "result": result}
+
+
+@shared_task(name=constants.ANALYZE_PGN_CHUNK_TASK)
+def analyze_pgn_chunk(session_id: UUID, usernames: str, chunk: list[str], idx: int):
+    parsed_games = []
+    for raw in chunk:
+        try:
+            parsed_games.extend(get_games(raw))
+        except Exception as exc:
+            LOG.warning(
+                f"Exception while parsing PGN Chunk at {idx}: {exc}", exc_info=True
+            )
+            continue
+    return get_games_analysis(session_id, parsed_games, usernames)
 
 
 @shared_task(name=constants.CHESS_STYLE_TASK)
@@ -225,6 +284,11 @@ def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
 
 @task_postrun.connect
 def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extras):
+    if sender.name in (
+        constants.ANALYZE_GAMES_TASK,
+        constants.ANALYZE_PGN_CHUNK_TASK,
+    ):
+        return None
     res = {"result": result} if (result := retval.get("result")) else None
     t = TaskResult(
         task_id=task_id,
@@ -235,7 +299,7 @@ def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extra
     match sender.name:
         case constants.GET_LICHESS_TASK | constants.GET_CHESS_COM_TASK:
             t.stage = AnalysisStage.FILE_UPLOAD
-        case constants.ANALYZE_GAMES_TASK:
+        case constants.FINALIZE_ANALYSIS_TASK:
             t.stage = AnalysisStage.GAME
         case constants.CHESS_STYLE_TASK:
             t.stage = AnalysisStage.CHESS_STYLE
