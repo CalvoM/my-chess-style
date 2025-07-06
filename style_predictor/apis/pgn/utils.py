@@ -1,17 +1,11 @@
 import logging
 import os
-import re
 import time
-from typing import Any
 
 import berserk
 import requests
 from chessdotcom import ChessDotComClient
 from dotenv import load_dotenv
-
-from style_predictor.schemas import (
-    LichessGame,
-)
 
 LOG = logging.getLogger(__name__)
 
@@ -28,42 +22,68 @@ chessdotcomClient: ChessDotComClient = ChessDotComClient(
 lichessClient = berserk.Client(session=session)
 
 
-def camel_to_snake(name: str):
-    # Convert camelCase or PascalCase to snake_case
-    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
-
-
-def dict_to_class(cls: type[LichessGame], data: dict[str, Any]) -> LichessGame:
-    cls_fields = list(cls.__dataclass_fields__.keys())
-    snake_data = {camel_to_snake(k): v for k, v in data.items()}
-    excluded_fields = list(set(snake_data.keys()) - set(cls_fields))
-    LOG.warning(f"Unsupported Lichess fields: {excluded_fields}")
-    for f in excluded_fields:
-        try:
-            del snake_data[f]
-        except KeyError:
-            LOG.error(f"Key '{f}' is not found.")
-    return cls(**snake_data)
-
-
 def does_lichess_player_exists(username: str):
-    lichessClient.users.get_public_data(username)
+    """Checks if the `username` provided is a registered user of lichess.
+
+    We try getting the user's details from lichess. If not successful,
+    it will raise a 404 error.
+
+    Args:
+        username: username to check if registered on lichess.
+
+    Return:
+        True: if data of user is found on lichess.
+
+    Raises:
+    ResponseError: if user is not Found
+
+    """
+    _ = lichessClient.users.get_public_data(username)
     return True
 
 
 def get_lichess_games(username: str) -> str:
+    """Get all games of `username` from lichess platform.
+
+    Args:
+        username: Username of user to get games from lichess.
+
+    Returns:
+        string of all games.
+    """
     games: list[str] = []
     games = list(lichessClient.games.export_by_player(username, as_pgn=True))
     return "\r\n".join(games)
 
 
 def does_chess_dot_com_player_exists(username: str):
-    chessdotcomClient.get_player_profile(username)
+    """Checks if the `username` provided is a registered user of chess.com.
+
+    We try getting the user's details from chess.com. If not successful,
+    it will raise a 404 error.
+
+    Args:
+        username: username to check if registered on chess.com.
+
+    Return:
+        True: if data of user is found on chess.com.
+
+    Raises:
+    ChessDotComClientError: if user is not Found
+    """
+    _ = chessdotcomClient.get_player_profile(username)
     return True
 
 
 def get_chess_dot_com_games(username: str) -> str:
+    """Get all games of `username` from chess.com platform.
+
+    Args:
+        username: Username of user to get games from chess.com.
+
+    Returns:
+        string of all games.
+    """
     all_pgns: str = ""
     response = chessdotcomClient.get_player_game_archives(username)
     archives: dict[str, list[str]] = response.json

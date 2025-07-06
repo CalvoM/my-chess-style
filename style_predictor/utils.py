@@ -5,6 +5,14 @@ from typing import Any
 def group_openings_with_eco(
     data: list[tuple[str, str, int]],
 ) -> dict[str, dict[str, int | list[str]]]:
+    """Group the openings and tally the count of each opening.
+
+    Args:
+        data: list of (chess echo code, chess full name, count of chess openings)
+
+    Returns:
+        Map of chess full name to eco code and total count of openings.
+    """
     grouped = defaultdict(lambda: {"total": 0, "eco_codes": []})
     for eco_code, full_name, count in data:
         key = full_name
@@ -29,6 +37,7 @@ def average_rating(data: dict[str, tuple[float, int]]):
 
 
 def merge_game_objects(dest: dict[str, Any], src: dict[str, Any]):
+    """merge the chess games into dest from src."""
     for k, v in src.items():
         if k == "openings":
             base_val: list[Any] = dest.get(k, [])

@@ -4,7 +4,6 @@ import uuid
 from typing import Any
 
 from berserk.exceptions import ResponseError
-from celery.result import AsyncResult
 from chessdotcom import ChessDotComClientError
 from django.http import HttpRequest
 from dotenv import load_dotenv
@@ -45,9 +44,10 @@ def file_upload(
     """
     session_id = uuid.uuid4()
     pgn_file.name = str(session_id)
-    _task: AsyncResult[Any] = pgn_get_games_from_file.delay(
+    _ = pgn_get_games_from_file.delay(
         session_id, usernames.usernames, pgn_file.read().decode()
     )
+    LOG.info(f"Started processing of session with ID: {session_id}")
     return {"status_id": str(session_id)}
 
 
@@ -61,22 +61,22 @@ def external_user(request: HttpRequest, external_user: ExternalUser):
     """
     if external_user.platform == "chess.com":
         try:
-            does_chess_dot_com_player_exists(external_user.username)
+            _ = does_chess_dot_com_player_exists(external_user.username)
             session_id = uuid.uuid4()
-            _task: AsyncResult[Any] = pgn_get_chess_com_games_by_user.delay(
+            _ = pgn_get_chess_com_games_by_user.delay(
                 session_id, external_user.username
             )
+            LOG.info(f"Started processing of session with ID: {session_id}")
             return {"status_id": str(session_id)}
         except ChessDotComClientError as e:
             return e.status_code, {"message": json.loads(e.text)["message"]}
 
     elif external_user.platform == "lichess":
         try:
-            does_lichess_player_exists(external_user.username)
+            _ = does_lichess_player_exists(external_user.username)
             session_id = uuid.uuid4()
-            _task: AsyncResult[Any] = pgn_get_lichess_games_by_user.delay(
-                session_id, external_user.username
-            )
+            _ = pgn_get_lichess_games_by_user.delay(session_id, external_user.username)
+            LOG.info(f"Started processing of session with ID: {session_id}")
             return {"status_id": str(session_id)}
         except ResponseError as e:
             return e.status_code, {"message": e.reason}
