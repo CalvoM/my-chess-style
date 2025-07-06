@@ -1,0 +1,33 @@
+name: Run Tests with uv on Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main # or your default branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # Match your local Python version
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies with uv
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          uv run pytest
+          uv run ruff check
