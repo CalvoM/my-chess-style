@@ -2,15 +2,16 @@ import json
 import os
 
 from django.core.management import BaseCommand
+from django.http.response import HttpResponse
 from django.test import Client
 
 
 class Command(BaseCommand):
-    help = "Generates OpenAPI json file."
+    help: str = "Generates OpenAPI json file."
 
     def handle(self, *args, **kwargs):
-        client = Client()
-        response = client.get("/api/v1/openapi.json")
+        client: Client = Client()
+        response: HttpResponse = client.get("/api/v1/openapi.json")
         if response.status_code == 200:
             schema = response.json()
             output_path = os.path.join("openapi", "openapi.json")

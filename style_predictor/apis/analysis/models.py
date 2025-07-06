@@ -7,12 +7,16 @@ from style_predictor.apis.base_model import TimeStampedModel
 
 
 class AnalysisStage(models.IntegerChoices):
+    """Represents the stages in game analysis and processing."""
+
     FILE_UPLOAD = 1, _("FILE_UPLOAD")
     GAME = 2, _("GAME")
     CHESS_STYLE = 3, _("CHESS_STYLE")
 
 
 class TaskResult(TimeStampedModel):
+    """Stores task results after each step in the processing."""
+
     task_id = models.CharField(max_length=255, unique=True)
     session_id = models.UUIDField(default=uuid.uuid4, editable=False)
     status = models.CharField(max_length=50)

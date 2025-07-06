@@ -40,6 +40,11 @@ class OpeningFound:
 
 
 def get_openings_from_cache() -> list[ChessOpening]:
+    """Access all cached openings.
+
+    Returns:
+        List of cached chess openings.
+    """
     all_openings: list[ChessOpening] = cache.get(constants.OPENINGS_DB_KEY)
     if not all_openings:
         all_openings = list(
@@ -54,6 +59,15 @@ def get_openings_from_cache() -> list[ChessOpening]:
 def find_best_opening_by_moves(
     move_str: str, opening_bucket: dict[str, list[ChessOpening]]
 ) -> OpeningFound | None:
+    """Get the best chess opening fitting the moves provided.
+
+    Args:
+        move_str: Contains the moves to categorize.
+        opening_bucket: Maps the first_move to openings with that first move.
+
+    Returns:
+        first match of the opening based on the move, else None.
+    """
     parts = move_str.split(" ")
     first_move = " ".join(parts[:2]) if len(parts) >= 2 else move_str
     candidates = opening_bucket.get(first_move, [])
@@ -70,6 +84,15 @@ def find_best_opening_by_moves(
 def bucket_openings_by_first_move(
     openings: list[ChessOpening],
 ) -> dict[str, list[ChessOpening]]:
+    """Create buckets of openings by the first moves.
+    e.g. All openings begin with e4 will be in the same bucket.
+
+    Args:
+        openings - List of ChessOpening objects.
+
+    Returns:
+        bucket containing the groups of chess openings.
+    """
     buckets: dict[str, list[ChessOpening]] = defaultdict(list)
     for opening in openings:
         parts = opening.moves.split(" ")
@@ -79,6 +102,14 @@ def bucket_openings_by_first_move(
 
 
 def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[ChessOpeningDetails]:
+    """Get the opening name from the eco code in the game details.
+
+    Args:
+        eco_codes - the eco_codes encountered during analysis of chess games.
+
+    Returns:
+        list of chess opening details - eco_code, moves, number of times the opening is used in the games.
+    """
     res: list[tuple[str, str]] = []
     all_openings = get_openings_from_cache()
     fallbacks = {opening.eco_code: opening.full_name for opening in all_openings}
@@ -98,17 +129,32 @@ def map_eco_code(eco_codes: list[tuple[str, str]]) -> list[ChessOpeningDetails]:
 
 
 def normalize_time_control(time_control: str | None) -> int:
+    """Normalize the game time control based on:
+    https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.6.1
+
+    Args:
+        time_control: TimeControl segment in chess game object in pgn file.
+
+    Returns:
+        time in seconds.
+    """
     if not time_control:
         return 0
     elif time_control in ("?", "-"):
+        # ? is unknown time_control
+        # - is no time_control
         return 0
     elif "/" in time_control:
+        # <num_of_moves>/<time_control>
         time = time_control.split("/")[1]
     elif "+" in time_control:
+        # <time_in_seconds>+<increment>
         time = time_control.split("+")[0]
     elif "*" in time_control:
+        # sandclock *<time_in_seconds>
         time = time_control[1:]
     else:
+        # sudden death time control.
         time = time_control
     return int(time)
 
@@ -116,6 +162,15 @@ def normalize_time_control(time_control: str | None) -> int:
 def get_avg_opponent_rating_by_time_control(
     opponent_rating: list[tuple[int, int]],
 ) -> dict[str, tuple[float, int]]:
+    """Get the average elo rating of the opponents based on the time control.
+
+    Args:
+        opponent_rating: list of (elo_rating, time_in_seconds) of the opponents from the games.
+
+    Returns:
+        Map/Dict of game type by time control to tuple of (average_rating, count of time control)
+    """
+
     def average(ratings: list[int]) -> float:
         return sum(ratings) / len(ratings) if ratings else 0.0
 
@@ -139,6 +194,17 @@ def get_avg_opponent_rating_by_time_control(
 def save_file_and_queue_task(
     session_id: UUID, username: str, pgn_data: str, source: FileSource
 ) -> dict[str, Any]:
+    """Saves the file and starts the celery tasks.
+
+    Args:
+        session_id: Identifying ID for user.
+        username: username owner of file.
+        pgn_data: Data to be saved in the file.
+        source: Where the file comes from.
+
+    Returns:
+        result of the task. A dict with OK.
+    """
     upload_file = PGNFileUpload(
         user=None, session_id=session_id, usernames=username, source=source
     )
@@ -153,6 +219,16 @@ def save_file_and_queue_task(
 def get_games_analysis(
     session_id: UUID, pgn_games: list[PGNGame], username: str
 ) -> dict[str, Any]:
+    """Get the chess games analysis - basic stats.
+
+    Args:
+        session_id: Identifying ID for user.
+        pgn_games: list of chess games as `PGNGame` objects.
+        username: username to check in the games.
+
+    Returns:
+        Dict with statistical analysis of the games provided.
+    """
     names = {n.strip() for n in username.split(",")}
     total = len(pgn_games)
     wins = losses = draws = 0
@@ -202,16 +278,26 @@ def get_games_analysis(
 
 
 def split_pgn_into_games(pgn_text: str) -> list[str]:
+    """Split pgn text into individual games.
+
+    Args:
+        png_text: Text to split into games.
+
+    Returns:
+        List of games in text.
+    """
     return [f"[Event {g}" for g in pgn_text.split("[Event ")[1:]]
 
 
 @shared_task(name=constants.GET_FILE_GAMES_TASK)
 def pgn_get_games_from_file(session_id: UUID, usernames: str, pgn_data: str):
+    """Celery task to get chess games from pgn file."""
     return save_file_and_queue_task(session_id, usernames, pgn_data, FileSource.FILE)
 
 
 @shared_task(name=constants.GET_CHESS_COM_TASK)
 def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
+    """Celery task to get chess games for user from chess.com."""
     pgn_data: str = get_chess_dot_com_games(username)
     return save_file_and_queue_task(
         session_id, username, pgn_data, FileSource.CHESSDOTCOM
@@ -220,12 +306,18 @@ def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
 
 @shared_task(name=constants.GET_LICHESS_TASK)
 def pgn_get_lichess_games_by_user(session_id: UUID, username: str):
+    """Celery task to get chess games for user from lichess."""
     pgn_data: str = get_lichess_games(username)
     return save_file_and_queue_task(session_id, username, pgn_data, FileSource.LICHESS)
 
 
 @shared_task(name=constants.ANALYZE_GAMES_TASK)
 def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
+    """Celery task to analyse chess games to statistical data.
+
+    Parallelize the celery tasks to split and analyse pgn chunks and then get
+    statistical analysis of the games.
+    """
     file_obj = PGNFileUpload.objects.get(session_id=session_id)  # noqa: F841
     content: str = ""
     # games: list[PGNGame] = []
@@ -234,6 +326,8 @@ def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     games = split_pgn_into_games(content)
     chunk_size = 100
     chunks = [games[i : i + chunk_size] for i in range(0, len(games), chunk_size)]
+    # Split the pgn text into chunks to help with Parallelized analysis of the chunks.
+    # This helps in reducing time for analysis.
     res = chord(
         [
             analyze_pgn_chunk.s(session_id, file_obj.usernames, chunk, i)
@@ -246,6 +340,7 @@ def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
 
 @shared_task(name=constants.FINALIZE_ANALYSIS_TASK)
 def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
+    """Celery task to finalize chess game statistical analysis."""
     result = {}
     session_id = objects[0].get("session_id", "")
     for d in objects:
@@ -265,6 +360,7 @@ def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
 
 @shared_task(name=constants.ANALYZE_PGN_CHUNK_TASK)
 def analyze_pgn_chunk(session_id: UUID, usernames: str, chunk: list[str], idx: int):
+    """Celery task to analyse the pgn chunks and to convert to PGNGame objects."""
     parsed_games = []
     for raw in chunk:
         try:

@@ -9,12 +9,16 @@ from style_predictor.apis.base_model import TimeStampedModel
 
 
 class FileSource(models.IntegerChoices):
+    """Represents the options of sources of games/pgn file"""
+
     CHESSDOTCOM = 1, _("CHESSDOTCOM")
     LICHESS = 2, _("LICHESS")
     FILE = 3, _("FILE")
 
 
 class PGNFileUpload(TimeStampedModel):
+    """Represents and hold details of the PGN file uploaded for analysis."""
+
     file = models.FileField(upload_to="uploads/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
@@ -34,6 +38,8 @@ class PGNFileUpload(TimeStampedModel):
 
 
 class ChessOpening(TimeStampedModel):
+    """Represent and store the details of the various chess openings."""
+
     eco_code = models.CharField(max_length=10)
     full_name = models.CharField(max_length=255)
     moves = models.CharField(max_length=512)
