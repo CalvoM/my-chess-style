@@ -348,6 +348,7 @@ def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
             LOG.warning(
                 f"All processed objects must have the same ID: {session_id}. We found {d.get('session_id')}"
             )
+            continue
         result = merge_game_objects(result, d)
     result["openings"] = sort_openings(
         group_openings_with_eco(result.get("openings", []))

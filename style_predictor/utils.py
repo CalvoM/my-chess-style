@@ -1,5 +1,8 @@
+import logging
 from collections import defaultdict
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 
 def group_openings_with_eco(
@@ -8,7 +11,7 @@ def group_openings_with_eco(
     """Group the openings and tally the count of each opening.
 
     Args:
-        data: list of (chess echo code, chess full name, count of chess openings)
+        data: list of (chess eco code, chess full name, count of chess openings)
 
     Returns:
         Map of chess full name to eco code and total count of openings.
@@ -22,7 +25,7 @@ def group_openings_with_eco(
     return grouped
 
 
-def sort_openings(openings):
+def sort_openings(openings: dict[str, dict[str, dict[str, int | list[str]]]]):
     return sorted(openings.items(), key=lambda item: item[1]["total"], reverse=True)[:5]
 
 
@@ -30,8 +33,17 @@ def average_rating(data: dict[str, tuple[float, int]]):
     res: dict[str, float] = defaultdict(float)
     for k, v in data.items():
         try:
-            res[k] = v[0] / v[1]
-        except ZeroDivisionError:
+            if len(v) != 2:
+                res[k] = 0
+            elif v[0] < 0 or v[1] < 0:
+                LOG.warning(
+                    f"We encountered a negative value when calculating average of rating {v[0]} and {v[1]}"
+                )
+                res[k] = 0
+            else:
+                res[k] = v[0] / v[1]
+        except (ZeroDivisionError, TypeError, IndexError) as e:
+            LOG.warning(f"Encountered error while calculating average rating: {e}")
             res[k] = 0
     return res
 

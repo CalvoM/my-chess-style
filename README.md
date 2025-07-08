@@ -1,5 +1,7 @@
 # My chess Style
 
+[![codecov](https://codecov.io/github/calvom/my-chess-style/graph/badge.svg?token=KTFUJR875Z)](https://codecov.io/github/calvom/my-chess-style)
+
 ## References
 
 Reference Document: [Read more](https://docs.google.com/document/d/1tZYcn5qNHjpreDugcLztrE3W7mYAtdBTe6WdIZlW5GY/edit?usp=sharing)
