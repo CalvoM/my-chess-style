@@ -29,5 +29,10 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest
+          uv run pytest --cov --cov-branch --cov-report=xml
           uv run ruff check
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: CalvoM/my-chess-style
