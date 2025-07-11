@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import HomeCardWithOptions from '../components/HomeCardWithOptions.vue'
 </script>
 
 <template>
   <main>
-    <TheWelcome />
+    <HomeCardWithOptions />
   </main>
 </template>

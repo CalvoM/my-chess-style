@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Button from '@/volt/Button.vue'
 defineProps<{
   msg: string
 }>()
@@ -7,7 +6,7 @@ defineProps<{
 
 <template>
   <div class="greetings">
-    <h1 class="bg-blue-500 text-white p-5"">{{ msg }}</h1>
+    <h1 class="bg-blue-500 text-white p-5">{{ msg }}</h1>
     <h3>
       You’ve successfully created a project with
       <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +
