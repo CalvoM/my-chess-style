@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-
 </script>
 
 <template>
@@ -13,12 +12,10 @@ import { RouterView } from 'vue-router'
             Analyze your chess games and discover your playing style
           </p>
         </div>
-  <RouterView />
+        <RouterView />
       </div>
     </div>
   </header>
-
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

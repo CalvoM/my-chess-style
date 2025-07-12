@@ -19,30 +19,36 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import FileUpload from 'primevue/fileupload'
+import  Toast  from 'primevue/toast'
+import ToastService from 'primevue/toastservice'
+import Select from 'primevue/select'
 
 const app = createApp(App)
 
-app.component("Button", Button)
-app.component("Card", Card)
-app.component("Avatar", Avatar)
-app.component("ToggleSwitch", ToggleSwitch)
-app.component("Tabs", Tabs)
-app.component("Tab", Tab)
-app.component("TabList", TabList)
-app.component("TabPanels", TabPanels)
-app.component("TabPanel", TabPanel)
-app.component("InputText", InputText)
-app.component("FileUpload", FileUpload)
+app.component('Button', Button)
+app.component('Card', Card)
+app.component('Avatar', Avatar)
+app.component('ToggleSwitch', ToggleSwitch)
+app.component('Tabs', Tabs)
+app.component('Tab', Tab)
+app.component('TabList', TabList)
+app.component('TabPanels', TabPanels)
+app.component('TabPanel', TabPanel)
+app.component('InputText', InputText)
+app.component('FileUpload', FileUpload)
+app.component('Toast', Toast)
+app.component('Select', Select)
 
 app.use(createPinia())
 app.use(router)
+app.use(ToastService)
 app.use(PrimeVue, {
-theme:{
-  preset: Aura,
-  options:{
-    darkModeSelector: false || 'none',
-  }
-}
+  theme: {
+    preset: Aura,
+    options: {
+      darkModeSelector: false || 'none',
+    },
+  },
 })
 
 app.mount('#app')
