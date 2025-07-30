@@ -19,6 +19,7 @@
   "dependencies": {
     "@primeuix/themes": "^1.2.1",
     "@vueuse/core": "^13.5.0",
+    "lucide-vue-next": "^0.526.0",
     "pinia": "^3.0.3",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.6",
@@ -30,6 +31,8 @@
   "devDependencies": {
     "@playwright/test": "^1.53.1",
     "@tailwindcss/vite": "^4.1.11",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/vue": "^8.1.0",
     "@tsconfig/node22": "^22.0.2",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.15.32",

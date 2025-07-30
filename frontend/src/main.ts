@@ -19,9 +19,10 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import FileUpload from 'primevue/fileupload'
-import  Toast  from 'primevue/toast'
+import Toast from 'primevue/toast'
 import ToastService from 'primevue/toastservice'
 import Select from 'primevue/select'
+import ProgressBar from 'primevue/progressbar'
 
 const app = createApp(App)
 
@@ -38,6 +39,7 @@ app.component('InputText', InputText)
 app.component('FileUpload', FileUpload)
 app.component('Toast', Toast)
 app.component('Select', Select)
+app.component('ProgressBar', ProgressBar)
 
 app.use(createPinia())
 app.use(router)
