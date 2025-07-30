@@ -12,6 +12,7 @@ dependencies = [
   "django-ninja>=1.4.0",
   "fastparquet>=2024.11.0",
   "huggingface-hub>=0.31.2",
+  "langchain-ollama>=0.3.6",
   "matplotlib>=3.10.1",
   "numpy>=2.2.4",
   "pandas>=2.2.3",

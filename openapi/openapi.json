@@ -16,7 +16,7 @@
             "description": "OK"
           }
         },
-        "description": "Clients upload files with games.\n\n@body\n\n<b>:usernames:</b> List of usernames used by client in the games.\n\n<b>:png_file:</b> File with games, either archive/compressed file or .pgn file.",
+        "description": "Clients upload files with games.\n\n@body\n\n<b>:usernames:</b> List of usernames used by client in the games separated by '||'\n\n<b>:png_file:</b> File with games, either archive/compressed file or .pgn file.",
         "tags": [
           "pgn"
         ],
@@ -30,6 +30,11 @@
                   "usernames": {
                     "title": "Usernames",
                     "type": "string"
+                  },
+                  "include_roast": {
+                    "default": false,
+                    "title": "Include Roast",
+                    "type": "boolean"
                   },
                   "pgn_file": {
                     "format": "binary",
@@ -111,6 +116,7 @@
             "description": "OK"
           }
         },
+        "description": "Returns to the user the result of their file processing tasks.\n\nThe user provides the status_id they received after either submitting\ntheir usernames or pgn files.",
         "tags": [
           "analysis"
         ]
@@ -119,17 +125,22 @@
   },
   "components": {
     "schemas": {
-      "FileUploadIn": {
+      "FormDetails": {
         "properties": {
           "usernames": {
             "title": "Usernames",
             "type": "string"
+          },
+          "include_roast": {
+            "default": false,
+            "title": "Include Roast",
+            "type": "boolean"
           }
         },
         "required": [
           "usernames"
         ],
-        "title": "FileUploadIn",
+        "title": "FormDetails",
         "type": "object"
       },
       "MessageError": {
@@ -159,6 +170,11 @@
             ],
             "title": "Platform",
             "type": "string"
+          },
+          "include_roast": {
+            "default": false,
+            "title": "Include Roast",
+            "type": "boolean"
           }
         },
         "required": [

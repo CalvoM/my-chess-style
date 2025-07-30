@@ -40,13 +40,15 @@ LichessVariant = Literal[
 LichessGameEndStatus = Literal["outoftime", "mate", "resign"]
 
 
-class FileUploadIn(Schema):
+class FormDetails(Schema):
     usernames: str
+    include_roast: bool = False
 
 
 class ExternalUser(Schema):
     username: str
     platform: SupportedPlatforms = "chess.com"
+    include_roast: bool = False
 
 
 class MessageError(Schema):

@@ -11,7 +11,8 @@ class AnalysisStage(models.IntegerChoices):
 
     FILE_UPLOAD = 1, _("FILE_UPLOAD")
     GAME = 2, _("GAME")
-    CHESS_STYLE = 3, _("CHESS_STYLE")
+    ROASTING = 3, _("ROASTING_USER")
+    CHESS_STYLE = 4, _("CHESS_STYLE")
 
 
 class TaskResult(TimeStampedModel):

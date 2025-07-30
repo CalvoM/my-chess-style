@@ -46,3 +46,8 @@ class ChessOpening(TimeStampedModel):
 
     class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         db_table: str = "my_chess_style_chess_opening"
+
+
+class RoastRegister(TimeStampedModel):
+    session_id = models.UUIDField(default=uuid.uuid4, editable=False)
+    include_roast = models.BooleanField(default=False)

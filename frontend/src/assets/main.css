@@ -42,3 +42,6 @@
   background-color: hsl(210, 40%, 96.1%) !important;
   color: hsl(215, 16.3%, 46.9%) !important;
 }
+.p-card {
+  border: 1px solid #ddd;
+}
