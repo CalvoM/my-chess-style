@@ -5,56 +5,70 @@ import { useUIStore } from '@/stores/ui'
 import type { PlatformOptions } from '@/types'
 
 const uploadFile = ref()
-const pgnUsername:Ref<string> = ref('')
-const platformUsername:Ref<string> = ref('')
-const externalPlatform:Ref<PlatformOptions> = ref({})
+const pgnUsername: Ref<string> = ref('')
+const platformUsername: Ref<string> = ref('')
+const externalPlatform: Ref<PlatformOptions> = ref({})
 const trackingID: Ref<string> = ref('')
-const toastClass:Ref<string> = ref('')
+const toastClass: Ref<string> = ref('')
+const includeRoast: Ref<boolean> = ref(false)
 
 const supportedPlatforms = ref([
-  {name:"Chess.com", code: "chess.com"},
-  {name:"Lichess", code:"lichess"}
+  { name: 'Chess.com', code: 'chess.com' },
+  { name: 'Lichess', code: 'lichess' },
 ])
 
 const ui = useUIStore()
 
 async function uploadPGNFile() {
-  let formData = new FormData()
-  formData.append("pgn_file", uploadFile.value.files[0])
-  formData.append("usernames", pgnUsername.value)
+  const formData = new FormData()
+  formData.append('pgn_file', uploadFile.value.files[0])
+  formData.append('usernames', pgnUsername.value)
+  formData.append('include_roast', includeRoast.value)
   const { data, pending, error, refresh } = await useFetch('/server/pgn/upload', {
-    method: "POST",
-    body:formData
+    method: 'POST',
+    body: formData,
   }).json()
-  if(error.value){
-    toastClass.value = ui.showMessage("error", "Error", error.value)
-  }else{
+  if (error.value) {
+    toastClass.value = ui.showMessage('error', 'Error', error.value)
+  } else {
     await navigator.clipboard.writeText(data.value.status_id)
-    toastClass.value = ui.showMessage("success", "Upload successful", `Tracking ID copied to clipboard!`)
+    toastClass.value = ui.showMessage(
+      'success',
+      'Upload successful',
+      `Tracking ID copied to clipboard!`,
+    )
   }
-
 }
 
 async function uploadPlatformUsernames() {
-  const { data, pending, error, refresh } = await useFetch('/server/pgn/external_user/').post({
-    username: platformUsername.value, platform:externalPlatform.value.code
-  }).json()
-  if(error.value){
-    toastClass.value = ui.showMessage("error", "Error", error.value)
-  }else{
+  const { data, pending, error, refresh } = await useFetch('/server/pgn/external_user/')
+    .post({
+      username: platformUsername.value,
+      platform: externalPlatform.value.code,
+      include_roast: includeRoast.value,
+    })
+    .json()
+  if (error.value) {
+    toastClass.value = ui.showMessage('error', 'Error', error.value)
+  } else {
     await navigator.clipboard.writeText(data.value.status_id)
-    toastClass.value = ui.showMessage("success", "Upload successful", `Tracking ID copied to clipboard!`)
+    toastClass.value = ui.showMessage(
+      'success',
+      'Upload successful',
+      `Tracking ID copied to clipboard!`,
+    )
   }
 }
 
 async function checkStatusByTransactionID() {
-  const { data, pending, error, refresh } = await useFetch(`/server/analysis/status/${trackingID.value}`).json()
-  if(error.value){
-    toastClass.value = ui.showMessage("error", "Error", error.value)
-  }else{
-    toastClass.value = ui.showMessage("success", "Upload successful", `Tracking ID: ${data.value}`)
+  const { data, pending, error, refresh } = await useFetch(
+    `/server/analysis/status/${trackingID.value}`,
+  ).json()
+  if (error.value) {
+    toastClass.value = ui.showMessage('error', 'Error', error.value)
+  } else {
+    toastClass.value = ui.showMessage('success', 'Upload successful', `Tracking ID: ${data.value}`)
   }
-
 }
 </script>
 
@@ -86,11 +100,11 @@ async function checkStatusByTransactionID() {
             <div class="flex flex-col gap-2">
               <label for="pgn-file">PGN File</label><br />
               <fileUpload
+                id="pgn-file"
                 ref="uploadFile"
                 mode="basic"
                 name="demo[]"
                 accept=".pgn"
-                :maxFileSize="1000000"
                 :multiple="false"
               />
             </div>
@@ -104,6 +118,12 @@ async function checkStatusByTransactionID() {
                 class="w-full"
               />
             </div>
+            <div class="flex items-center space-x-2">
+              <ToggleSwitch id="include-roast-username" v-model="includeRoast" />
+              <label for="include-roast-username" class="text-md pl-2">
+                Include AI roast & commentary (prepare yourself! 🔥)
+              </label>
+            </div>
             <Button
               class="w-full"
               :disabled="!pgnUsername || uploadFile.files.length == 0"
@@ -115,7 +135,14 @@ async function checkStatusByTransactionID() {
           <TabPanel value="enter_username" class="flex flex-col gap-4 mt-6">
             <div class="flex flex-col gap-2">
               <label for="platform">Platform</label><br />
-              <Select id="platform" v-model="externalPlatform" :options="supportedPlatforms" optionLabel="name" placeholder="Select chess platform" class="w-full border border-input bg-background rounded-md"/>
+              <Select
+                id="platform"
+                v-model="externalPlatform"
+                :options="supportedPlatforms"
+                optionLabel="name"
+                placeholder="Select chess platform"
+                class="w-full border border-input bg-background rounded-md"
+              />
             </div>
             <div class="flex flex-col gap-2">
               <label for="username">Username</label><br />
@@ -124,6 +151,12 @@ async function checkStatusByTransactionID() {
                 placeholder="Enter your username"
                 v-model="platformUsername"
               />
+            </div>
+            <div class="flex items-center space-x-2">
+              <ToggleSwitch id="include-roast-username" v-model="includeRoast" />
+              <label for="include-roast-username" class="text-md pl-2">
+                Include AI roast & commentary (prepare yourself! 🔥)
+              </label>
             </div>
             <Button class="w-full" :disabled="!platformUsername" @click="uploadPlatformUsernames">
               Analyze Games
@@ -139,7 +172,7 @@ async function checkStatusByTransactionID() {
               />
             </div>
             <Button class="w-full" :disabled="!trackingID" @click="checkStatusByTransactionID">
-              Track Progress
+              Track Progress by ID
             </Button>
           </TabPanel>
         </TabPanels>
