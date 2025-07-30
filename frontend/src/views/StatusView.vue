@@ -44,7 +44,7 @@ async function getAnalysisData() {
 }
 </script>
 <template>
-  <div class="space-y-6 w-2/3 mx-auto">
+  <div class="grid grid-cols-1 gap-6 w-2/3 mx-auto">
     <Card class="w-full">
       <template #title>
         <div class="flex items-center gap-2">
@@ -96,7 +96,7 @@ async function getAnalysisData() {
         </div>
       </template>
     </Card>
-    <StatusCardWithGamesAnalysis :gameObjects="gameData" />
-    <StatusCardWithRoast :roastData="roastData" />
+    <StatusCardWithGamesAnalysis :gameObjects="gameData" v-if="gameData" />
+    <StatusCardWithRoast :roastData="roastData" v-if="roastData" />
   </div>
 </template>

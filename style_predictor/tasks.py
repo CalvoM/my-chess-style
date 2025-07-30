@@ -13,10 +13,16 @@ from django.db.models.functions import Length
 
 import style_predictor.constants as constants
 from style_predictor.apis.analysis.models import AnalysisStage, TaskResult
-from style_predictor.apis.pgn.models import ChessOpening, FileSource, PGNFileUpload
+from style_predictor.apis.pgn.models import (
+    ChessOpening,
+    FileSource,
+    PGNFileUpload,
+    RoastRegister,
+)
 from style_predictor.apis.pgn.utils import get_chess_dot_com_games, get_lichess_games
 from style_predictor.pgn_parser.game import get_games
 from style_predictor.pgn_parser.game.game import PGNGame
+from style_predictor.roasts import generate_roast
 from style_predictor.utils import (
     average_rating,
     group_openings_with_eco,
@@ -139,7 +145,9 @@ def normalize_time_control(time_control: str | None) -> int:
         time in seconds.
     """
     if not time_control:
-        return 0
+        # if no time control, assume it is classical
+        LOG.warn("No TimeControl in the PGN, defaulting to classical.")
+        return 60 * 60
     elif time_control in ("?", "-"):
         # ? is unknown time_control
         # - is no time_control
@@ -229,7 +237,7 @@ def get_games_analysis(
     Returns:
         Dict with statistical analysis of the games provided.
     """
-    names = {n.strip() for n in username.split(",")}
+    names = {n.strip() for n in username.split("||")}
     total = len(pgn_games)
     wins = losses = draws = 0
     opp_mapping: list[tuple[int, int | None]] = []
@@ -356,7 +364,23 @@ def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
     result["opponents_avg_rating"] = average_rating(
         result.get("opponents_avg_rating", {})
     )
+    LOG.info("Checking if roasting is allowed")
+    roast = RoastRegister.objects.filter(session_id=UUID(session_id)).first()
+    if roast:
+        if roast.include_roast:
+            LOG.info("Let the roast begin.")
+            current_app.send_task(constants.ROASTING_TASK, args=[session_id, result])
+        else:
+            LOG.info("No roasts please.")
+    else:
+        LOG.info("Something is up with roasting register.")
     return {"session_id": str(session_id), "result": result}
+
+
+@shared_task(name=constants.ROASTING_TASK)
+def generate_roast_from_llm(session_id: str, result: dict[str, Any]) -> dict[str, Any]:
+    llm_roast = generate_roast(result)
+    return {"session_id": session_id, "result": llm_roast}
 
 
 @shared_task(name=constants.ANALYZE_PGN_CHUNK_TASK)
@@ -381,6 +405,7 @@ def pgn_determine_chess_playing_style(session_id: UUID) -> dict[str, str]:
 
 @task_postrun.connect
 def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extras):
+    LOG.info(f"Processing th results of task: {sender.name}")
     if sender.name in (
         constants.ANALYZE_GAMES_TASK,
         constants.ANALYZE_PGN_CHUNK_TASK,
@@ -400,6 +425,8 @@ def save_task_result(sender, task_id, task, args, kwargs, retval, state, **extra
             t.stage = AnalysisStage.GAME
         case constants.CHESS_STYLE_TASK:
             t.stage = AnalysisStage.CHESS_STYLE
+        case constants.ROASTING_TASK:
+            t.stage = AnalysisStage.ROASTING
         case _:
             pass
     t.save()
