@@ -5,6 +5,7 @@
 
 @theme {
   --color-muted: var(--color-gray-100);
+  --color-muted: hsl(210 40% 96.1%);
   --color-muted-foreground: hsl(215.4 16.3% 46.9%);
 }
 

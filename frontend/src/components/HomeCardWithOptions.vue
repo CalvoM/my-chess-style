@@ -3,6 +3,9 @@ import { ref, type Ref } from 'vue'
 import { useFetch } from '@vueuse/core'
 import { useUIStore } from '@/stores/ui'
 import type { PlatformOptions } from '@/types'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const uploadFile = ref()
 const pgnUsername: Ref<string> = ref('')
@@ -24,51 +27,56 @@ async function uploadPGNFile() {
   formData.append('pgn_file', uploadFile.value.files[0])
   formData.append('usernames', pgnUsername.value)
   formData.append('include_roast', includeRoast.value)
-  const { data, pending, error, refresh } = await useFetch('/server/pgn/upload', {
-    method: 'POST',
-    body: formData,
-  }).json()
-  if (error.value) {
-    toastClass.value = ui.showMessage('error', 'Error', error.value)
-  } else {
-    await navigator.clipboard.writeText(data.value.status_id)
-    toastClass.value = ui.showMessage(
-      'success',
-      'Upload successful',
-      `Tracking ID copied to clipboard!`,
-    )
+  try {
+    const response = await fetch('/server/pgn/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await response.json()
+    if (!response.ok) {
+      ui.showMessage('error', 'Error', data.message)
+    } else {
+      await navigator.clipboard.writeText(data.status_id)
+      toastClass.value = ui.showMessage(
+        'success',
+        'Upload successful',
+        `Tracking ID copied to clipboard!`,
+      )
+    }
+  } catch (error) {
+    ui.showMessage('error', 'Error', error)
   }
 }
 
 async function uploadPlatformUsernames() {
-  const { data, pending, error, refresh } = await useFetch('/server/pgn/external_user/')
-    .post({
-      username: platformUsername.value,
-      platform: externalPlatform.value.code,
-      include_roast: includeRoast.value,
+  try {
+    const response = await fetch('/server/pgn/external_user/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: platformUsername.value,
+        platform: externalPlatform.value.code,
+        include_roast: includeRoast.value,
+      }),
     })
-    .json()
-  if (error.value) {
-    toastClass.value = ui.showMessage('error', 'Error', error.value)
-  } else {
-    await navigator.clipboard.writeText(data.value.status_id)
-    toastClass.value = ui.showMessage(
-      'success',
-      'Upload successful',
-      `Tracking ID copied to clipboard!`,
-    )
+    const data = await response.json()
+    if (!response.ok) {
+      ui.showMessage('error', 'Error', data.message)
+    } else {
+      await navigator.clipboard.writeText(data.status_id)
+      toastClass.value = ui.showMessage(
+        'success',
+        'Upload successful',
+        `Tracking ID copied to clipboard!`,
+      )
+    }
+  } catch (error) {
+    ui.showMessage('error', 'Error', error)
   }
 }
 
 async function checkStatusByTransactionID() {
-  const { data, pending, error, refresh } = await useFetch(
-    `/server/analysis/status/${trackingID.value}`,
-  ).json()
-  if (error.value) {
-    toastClass.value = ui.showMessage('error', 'Error', error.value)
-  } else {
-    toastClass.value = ui.showMessage('success', 'Upload successful', `Tracking ID: ${data.value}`)
-  }
+  router.push(`/status/${trackingID.value}`)
 }
 </script>
 

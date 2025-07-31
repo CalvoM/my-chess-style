@@ -23,6 +23,7 @@ import Toast from 'primevue/toast'
 import ToastService from 'primevue/toastservice'
 import Select from 'primevue/select'
 import ProgressBar from 'primevue/progressbar'
+import Skeleton from 'primevue/skeleton'
 
 const app = createApp(App)
 
@@ -40,6 +41,7 @@ app.component('FileUpload', FileUpload)
 app.component('Toast', Toast)
 app.component('Select', Select)
 app.component('ProgressBar', ProgressBar)
+app.component('Skeleton', Skeleton)
 
 app.use(createPinia())
 app.use(router)

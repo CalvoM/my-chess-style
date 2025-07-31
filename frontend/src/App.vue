@@ -8,7 +8,9 @@ import { RouterView, RouterLink } from 'vue-router'
       <div class="mx-auto flex flex-col gap-8 items-center">
         <div class="text-center flex flex-col gap-4">
           <router-link to="/">
-            <h1 class="text-4xl font-bold text-foreground">My Chess Style</h1></router-link
+            <h1 class="text-4xl font-bold text-foreground hover:underline hover:decoration-sky-400">
+              My Chess Style
+            </h1></router-link
           >
           <p class="text-xl text-muted-foreground">
             Analyze your chess games and discover your playing style

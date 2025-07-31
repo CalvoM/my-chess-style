@@ -146,7 +146,7 @@ def normalize_time_control(time_control: str | None) -> int:
     """
     if not time_control:
         # if no time control, assume it is classical
-        LOG.warn("No TimeControl in the PGN, defaulting to classical.")
+        LOG.warning("No TimeControl in the PGN, defaulting to classical.")
         return 60 * 60
     elif time_control in ("?", "-"):
         # ? is unknown time_control
@@ -343,7 +343,7 @@ def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     # This helps in reducing time for analysis.
     if not chunks:
         finalize_analysis.delay([{"session_id": str(session_id)}])
-        return {"session_id": session_id, "result": []}
+        return {"session_id": str(session_id), "result": []}
     else:
         res = chord(
             [
@@ -374,8 +374,7 @@ def finalize_analysis(objects: list[dict[str, Any]]) -> dict[str, Any]:
         result.get("opponents_avg_rating", {})
     )
     LOG.info("Checking if roasting is allowed")
-    roast = RoastRegister.objects.filter(session_id=UUID(session_id)).first()
-    if roast:
+    if roast := RoastRegister.objects.filter(session_id=UUID(session_id)).first():
         if roast.include_roast:
             LOG.info("Let the roast begin.")
             current_app.send_task(constants.ROASTING_TASK, args=[session_id, result])
