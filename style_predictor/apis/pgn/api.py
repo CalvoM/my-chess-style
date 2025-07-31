@@ -63,7 +63,8 @@ def external_user(request: HttpRequest, external_user: ExternalUser):
 
     if external_user.platform == "chess.com":
         try:
-            _ = does_chess_dot_com_player_exists(external_user.username)
+            if not does_chess_dot_com_player_exists(external_user.username):
+                return 404, {"message": "User has not been found on Chess.com"}
             session_id = uuid.uuid4()
             _ = pgn_get_chess_com_games_by_user.delay(
                 session_id, external_user.username
@@ -78,7 +79,8 @@ def external_user(request: HttpRequest, external_user: ExternalUser):
 
     elif external_user.platform == "lichess":
         try:
-            _ = does_lichess_player_exists(external_user.username)
+            if not does_lichess_player_exists(external_user.username):
+                return 404, {"message": "User has not been found on Lichess"}
             session_id = uuid.uuid4()
             _ = pgn_get_lichess_games_by_user.delay(session_id, external_user.username)
             LOG.info(f"Started processing of session with ID: {session_id}")

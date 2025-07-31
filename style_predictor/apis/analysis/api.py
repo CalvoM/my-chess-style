@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Any
 
@@ -8,6 +9,7 @@ from ninja.errors import HttpError
 from style_predictor.apis.analysis.models import TaskResult
 
 router = Router(tags=["analysis"])
+LOG = logging.getLogger(__name__)
 
 
 @router.get("/status/{status_id}")
@@ -24,6 +26,8 @@ def get_analysis_status(request: HttpRequest, status_id: str):
             for res in task_res
         }
     except ValueError as exc:
-        raise HttpError(400, str(exc))
+        msg = "Please check the Tracking ID you have provided."
+        LOG.error(str(exc))
+        raise HttpError(400, msg)
 
     return {"result": data}
