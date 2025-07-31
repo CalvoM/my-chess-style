@@ -6,7 +6,7 @@ const props = defineProps<{
 </script>
 <template>
   <div>
-    <Card>
+    <Card v-if="gameObjects.count">
       <template #title>Preliminary Game Analysis</template>
       <template #content>
         <div class="grid grid-cols-1 gap-4">
@@ -71,6 +71,35 @@ const props = defineProps<{
               </div>
             </div>
           </div>
+          <div class="mt-4">
+            <h4 class="font-black text-xl my-8">Top Openings</h4>
+            <div class="flex flex-col gap-3">
+              <div
+                v-for="([opening, data], idx) in props.gameObjects.openings"
+                :key="idx"
+                class="flex items-center justify-between p-3 bg-muted rounded-lg"
+              >
+                <div class="flex-1">
+                  <div class="font-medium text-sm">{{ opening }}</div>
+                  <div class="text-xs text-muted-foreground">
+                    ECO: {{ data.eco_codes.join(', ') }}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-bold text-primary">{{ data.total }}</div>
+                  <div class="text-xs text-muted-foreground">games</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Card>
+    <Card v-else>
+      <template #title>Preliminary Game Analysis</template>
+      <template #content>
+        <div class="grid grid-cols-1 gap-4">
+          <h2 class="text-primary">No games played by user</h2>
         </div>
       </template>
     </Card>

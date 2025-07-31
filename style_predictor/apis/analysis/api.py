@@ -27,7 +27,7 @@ def get_analysis_status(request: HttpRequest, status_id: str):
         }
     except ValueError as exc:
         msg = "Please check the Tracking ID you have provided."
-        LOG.error(str(exc))
+        LOG.error(str(exc), exc_info=True)
         raise HttpError(400, msg)
 
     return {"result": data}

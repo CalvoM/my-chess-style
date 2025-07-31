@@ -23,11 +23,16 @@ export interface RoastingUserData {
   roast: string
   encouragement: string
 }
+export interface FileUploadData {
+  source?: number
+  status?: string
+  usernames?: string
+}
 export interface AnalysisDataResult {
-  file_upload?: string
+  file_upload?: FileUploadData
   game?: GameData
   roasting_user?: RoastingUserData
-  chess_style?: Object
+  chess_style?: object
 }
 export interface AnalysisData {
   result?: AnalysisDataResult
