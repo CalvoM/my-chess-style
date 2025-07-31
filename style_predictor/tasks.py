@@ -221,7 +221,10 @@ def save_file_and_queue_task(
     transaction.on_commit(
         lambda: current_app.send_task(constants.ANALYZE_GAMES_TASK, args=[session_id])
     )
-    return {"session_id": str(session_id), "result": "OK"}
+    return {
+        "session_id": str(session_id),
+        "result": {"status": "OK", "source": source, "usernames": username},
+    }
 
 
 def get_games_analysis(
@@ -267,10 +270,12 @@ def get_games_analysis(
 
         # opponent rating
         if norm_time := normalize_time_control(tags.get("TimeControl")):
-            if is_white and tags.get("BlackElo") != "?":
+            if is_white and tags.get("BlackElo") != "?" and tags.get("BlackElo") != "":
                 opp_rating = int(tags.get("BlackElo", "0"))
                 opp_mapping.append((opp_rating, norm_time))
-            elif is_black and tags.get("WhiteElo") != "?":
+            elif (
+                is_black and tags.get("WhiteElo") != "?" and tags.get("WhiteElo") != ""
+            ):
                 opp_rating = int(tags.get("WhiteElo", "0"))
                 opp_mapping.append((opp_rating, norm_time))
     openings = map_eco_code(opening_mapper)
@@ -336,13 +341,17 @@ def pgn_analyze_games(session_id: UUID) -> dict[str, Any]:
     chunks = [games[i : i + chunk_size] for i in range(0, len(games), chunk_size)]
     # Split the pgn text into chunks to help with Parallelized analysis of the chunks.
     # This helps in reducing time for analysis.
-    res = chord(
-        [
-            analyze_pgn_chunk.s(session_id, file_obj.usernames, chunk, i)
-            for i, chunk in enumerate(chunks)
-        ],
-        finalize_analysis.s(),
-    ).apply_async()
+    if not chunks:
+        finalize_analysis.delay([{"session_id": str(session_id)}])
+        return {"session_id": session_id, "result": []}
+    else:
+        res = chord(
+            [
+                analyze_pgn_chunk.s(session_id, file_obj.usernames, chunk, i)
+                for i, chunk in enumerate(chunks)
+            ],
+            finalize_analysis.s(),
+        ).apply_async()
     return {"result": res.id, "session_id": str(session_id)}
 
 

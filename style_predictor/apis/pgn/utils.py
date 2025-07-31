@@ -38,7 +38,12 @@ def does_lichess_player_exists(username: str):
     ResponseError: if user is not Found
 
     """
-    _ = lichessClient.users.get_public_data(username)
+    LOG.info(f"Checking if {username} exists on Lichess")
+    try:
+        _ = lichessClient.users.get_public_data(username)
+    except Exception as e:
+        LOG.error(e)
+        return False
     return True
 
 
@@ -71,7 +76,12 @@ def does_chess_dot_com_player_exists(username: str):
     Raises:
     ChessDotComClientError: if user is not Found
     """
-    _ = chessdotcomClient.get_player_profile(username)
+    LOG.info(f"Checking if {username} exists on Chess.com")
+    try:
+        _ = chessdotcomClient.get_player_profile(username)
+    except Exception as e:
+        LOG.error(e)
+        return False
     return True
 
 
