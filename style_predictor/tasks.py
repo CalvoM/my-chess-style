@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -311,7 +312,7 @@ def pgn_get_games_from_file(session_id: UUID, usernames: str, pgn_data: str):
 @shared_task(name=constants.GET_CHESS_COM_TASK)
 def pgn_get_chess_com_games_by_user(session_id: UUID, username: str):
     """Celery task to get chess games for user from chess.com."""
-    pgn_data: str = get_chess_dot_com_games(username)
+    pgn_data: str = asyncio.run(get_chess_dot_com_games(username))
     return save_file_and_queue_task(
         session_id, username, pgn_data, FileSource.CHESSDOTCOM
     )
