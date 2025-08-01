@@ -1,9 +1,9 @@
+import asyncio
 import logging
 import os
-import time
 
+import aiohttp
 import berserk
-import requests
 from chessdotcom import ChessDotComClient
 from dotenv import load_dotenv
 
@@ -85,7 +85,28 @@ def does_chess_dot_com_player_exists(username: str):
     return True
 
 
-def get_chess_dot_com_games(username: str) -> str:
+async def fetch_archive(
+    archive_url: str, session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
+):
+    async with semaphore:
+        while True:
+            async with session.get(f"{archive_url}/pgn") as resp:
+                if resp.status == 429:
+                    retry_after = resp.headers.get("Retry-After")
+                    if retry_after:
+                        LOG.info(f"Rate limited. Retrying after {retry_after} seconds.")
+                        await asyncio.sleep(int(retry_after))
+                    else:
+                        # Implement exponential backoff here if no Retry-After
+                        await asyncio.sleep(45)  # Example fixed delay
+                elif resp.status == 200:
+                    return await resp.text()
+                else:
+                    LOG.error(f"Failed to fetch {archive_url}: {resp.status}")
+                    return ""
+
+
+async def get_chess_dot_com_games(username: str) -> str:
     """Get all games of `username` from chess.com platform.
 
     Args:
@@ -94,19 +115,16 @@ def get_chess_dot_com_games(username: str) -> str:
     Returns:
         string of all games.
     """
-    all_pgns: str = ""
+    conn_limit = 15
+    semaphore = asyncio.Semaphore(conn_limit)
+    all_pgns: list[str] = []
     response = chessdotcomClient.get_player_game_archives(username)
     archives: dict[str, list[str]] = response.json
-    for archive in archives.get("archives", []):
-        resp = requests.get(f"{archive}/pgn", headers=headers, timeout=60)
-        if resp.status_code == 200:
-            all_pgns += f"{resp.text}\n\n"
-        elif resp.status_code == 429:
-            LOG.warning(f"Rate limiting encountered for {archive}")
-            time.sleep(45)
-            resp = requests.get(f"{archive}/pgn", headers=headers, timeout=60)
-            if resp.status_code == 200:
-                all_pgns += f"{resp.text}\n\n"
-            else:
-                LOG.error(f"Failed to fetch url {archive}/pgn")
-    return all_pgns
+    connection = aiohttp.TCPConnector(limit=conn_limit)
+    async with aiohttp.ClientSession(connector=connection) as session:
+        tasks = [
+            fetch_archive(archive, session, semaphore)
+            for archive in archives.get("archives", [])
+        ]
+        all_pgns = await asyncio.gather(*tasks)
+    return "\n\n".join(all_pgns)

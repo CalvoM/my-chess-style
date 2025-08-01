@@ -141,10 +141,9 @@ celery_user = os.getenv("RABBITMQ_DEFAULT_USER")
 celery_pass = os.getenv("RABBITMQ_DEFAULT_PASS")
 net_host = os.getenv("DB_HOST")
 
+REDIS_URI = f"redis://:{os.getenv('CACHE_PASSWORD')}@{os.getenv('DB_HOST')}:6379/0"
 CELERY_BROKER_URL = f"amqp://{celery_user}:{celery_pass}@{net_host}:5672/"
-CELERY_RESULT_BACKEND = (
-    f"redis://:{os.getenv('CACHE_PASSWORD')}@{os.getenv('DB_HOST')}:6379/0"
-)
+CELERY_RESULT_BACKEND = REDIS_URI
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json", "pickle"]
 CELERY_RESULT_ACCEPT_CONTENT = ["json", "pickle"]
