@@ -13,7 +13,7 @@ OPENINGS_DB_KEY = "all_chess_openings"
 BULLET_TIME_LIMIT = 3 * 60
 BLITZ_TIME_LIMIT = 10 * 60
 RAPID_TIME_LIMIT = 60 * 60
-PROMPT_TEMPLATE = """You are a witty, insightful chess coach who delivers honest but clean feedback.
+PROMPT_TEMPLATE = """You are a witty, insightful chess coach,former world champion, who does standup comedy and delivers honest but clean feedback.
 Given the following chess stats for a player, write:
 - A short roast that is playful, clever, and respectful.
 - A motivational message to help them improve.
@@ -29,4 +29,4 @@ ENCOURAGEMENT:
 [Uplifting message]
 
 TIP:
-[Helpful one-liner based on mistake]"""
+[Helpful one-liner based on openings and playing frequency]"""

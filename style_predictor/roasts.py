@@ -10,8 +10,7 @@ from style_predictor.constants import PROMPT_TEMPLATE
 
 LOG = logging.getLogger(__name__)
 
-deepseek_response_obj = re.compile(
-    r"<think>(?P<ai_thought>.*)\</think>.*"
+llm_response_pattern = re.compile(
     r"ROAST:\n*(?P<ai_roast>.*)ENCOURAGEMENT\n*"
     r":(?P<ai_encouragement>.*)TIP\n*"
     r":(?P<ai_tip>.*)",
@@ -19,8 +18,8 @@ deepseek_response_obj = re.compile(
 )
 
 
-def filter_deepseek_response(response: str) -> dict[str, str]:
-    if match := deepseek_response_obj.match(response):
+def llm_response(response: str) -> dict[str, str]:
+    if match := llm_response_pattern.search(response):
         roast: str = match.groupdict().get("ai_roast", "")
         encouragement: str = match.groupdict().get("ai_encouragement", "")
         tip: str = match.groupdict().get("ai_tip", "")
@@ -42,11 +41,11 @@ def filter_deepseek_response(response: str) -> dict[str, str]:
 
 def generate_roast(data: dict[str, Any]) -> dict[str, str]:
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    model = OllamaLLM(model="deepseek-r1:7b")
+    model = OllamaLLM(model="phi3:14b")
     chain = prompt | model
     try:
         res = chain.invoke({"stats": json.dumps(data)})
-        return filter_deepseek_response(res)
+        return llm_response(res)
     except Exception as e:
         LOG.error(str(e), exc_info=True)
         return {

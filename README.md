@@ -46,6 +46,7 @@ uv run pytest
 ## Celery tasks
 
 Run celery worker.
+
 ```sh
 uv run celery -A my_chess_style worker --loglevel=info
 ```
@@ -54,4 +55,16 @@ Run the celery flower to inspect the tasks on a web interface.
 
 ```sh
 uv run celery -A my_chess_style flower --port=5555
+```
+
+## LLM Configuration
+
+1. Install [Ollama](https://ollama.com/download)
+
+2. Pull/Install the various LLMs e.g. deepseek.
+
+3. Run the ollama server.
+
+```sh
+ollama serve
 ```
