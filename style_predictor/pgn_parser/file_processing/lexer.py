@@ -83,7 +83,7 @@ class Lexer:
                 case "\n":
                     _ = self.read()
                     self._cr_pos()
-                    if self.peek() == "1":
+                    if self.peek() and self.peek().isdigit():
                         self.lex_movetext()
                         # break
                 case None:
