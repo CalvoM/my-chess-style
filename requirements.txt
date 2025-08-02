@@ -542,6 +542,10 @@ packaging==24.2 \
     #   langsmith
     #   matplotlib
     #   pytest
+palitra==0.0.1.post1 \
+    --hash=sha256:9faac26fc232706b99a87823b82cf5f63c533576799b17d6c835a49d0e2539de \
+    --hash=sha256:a26a67e0ffe16022d4108490a674634ae5c42c555c40edcf2c863d9795dcad7b
+    # via my-chess-style
 pandas==2.2.3 \
     --hash=sha256:15c0e1e02e93116177d29ff83e8b1619c93ddc9c49083f237d4312337a61165d \
     --hash=sha256:1db71525a1538b30142094edb9adc10be3f3e176748cd7acc2240c2f2e5aa3a4 \

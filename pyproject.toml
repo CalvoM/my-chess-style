@@ -15,6 +15,7 @@ dependencies = [
   "langchain-ollama>=0.3.6",
   "matplotlib>=3.10.1",
   "numpy>=2.2.4",
+  "palitra>=0.0.1.post1",
   "pandas>=2.2.3",
   "psycopg2>=2.9.10",
   "pyarrow>=20.0.0",

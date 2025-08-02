@@ -153,6 +153,6 @@ CELERY_IGNORE_RESULT = False
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": f"redis://:{os.getenv('CACHE_PASSWORD')}@{os.getenv('DB_HOST')}:6379",
+        "LOCATION": f"redis://default:{os.getenv('CACHE_PASSWORD')}@{os.getenv('DB_HOST')}:6379/1",
     }
 }
