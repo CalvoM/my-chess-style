@@ -241,7 +241,7 @@ def get_games_analysis(
     Returns:
         Dict with statistical analysis of the games provided.
     """
-    names = {n.strip() for n in username.split("||")}
+    names = {n.strip().lower() for n in username.split("||")}
     total = len(pgn_games)
     wins = losses = draws = 0
     opp_mapping: list[tuple[int, int | None]] = []
@@ -254,8 +254,8 @@ def get_games_analysis(
         if eco_code := tags.get("ECO", None):
             opening_mapper.append((eco_code, " ".join([str(move) for move in g.moves])))
 
-        is_white = white in names
-        is_black = black in names
+        is_white = white.lower() in names
+        is_black = black.lower() in names
 
         # win/loss/draw
         if result == constants.DRAW:
