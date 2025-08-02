@@ -5,6 +5,7 @@ import os
 import aiohttp
 import berserk
 from chessdotcom import ChessDotComClient
+from django.core.cache import cache
 from dotenv import load_dotenv
 
 LOG = logging.getLogger(__name__)
@@ -38,13 +39,21 @@ def does_lichess_player_exists(username: str):
     ResponseError: if user is not Found
 
     """
-    LOG.info(f"Checking if {username} exists on Lichess")
-    try:
-        _ = lichessClient.users.get_public_data(username)
-    except Exception as e:
-        LOG.error(e)
-        return False
-    return True
+    cache_key: str = f"lichess-{username}"
+    is_present: bool | None = cache.get(cache_key)
+    if is_present is None:
+        LOG.info(f"Checking if {username} exists on Lichess")
+        try:
+            _ = lichessClient.users.get_public_data(username)
+            cache.set(
+                cache_key,
+                True,
+            )
+        except Exception as e:
+            LOG.error(e)
+            return False
+        return True
+    return is_present
 
 
 def get_lichess_games(username: str) -> str:
@@ -76,13 +85,21 @@ def does_chess_dot_com_player_exists(username: str):
     Raises:
     ChessDotComClientError: if user is not Found
     """
+    cache_key: str = f"chess_dot_com-{username}"
     LOG.info(f"Checking if {username} exists on Chess.com")
-    try:
-        _ = chessdotcomClient.get_player_profile(username)
-    except Exception as e:
-        LOG.error(e)
-        return False
-    return True
+    is_present: bool | None = cache.get(cache_key)
+    if is_present is None:
+        try:
+            _ = chessdotcomClient.get_player_profile(username)
+            cache.set(
+                cache_key,
+                True,
+            )
+        except Exception as e:
+            LOG.error(e)
+            return False
+        return True
+    return is_present
 
 
 async def fetch_archive(
@@ -92,8 +109,7 @@ async def fetch_archive(
         while True:
             async with session.get(f"{archive_url}/pgn") as resp:
                 if resp.status == 429:
-                    retry_after = resp.headers.get("Retry-After")
-                    if retry_after:
+                    if retry_after := resp.headers.get("Retry-After"):
                         LOG.info(f"Rate limited. Retrying after {retry_after} seconds.")
                         await asyncio.sleep(int(retry_after))
                     else:
@@ -127,4 +143,4 @@ async def get_chess_dot_com_games(username: str) -> str:
             for archive in archives.get("archives", [])
         ]
         all_pgns = await asyncio.gather(*tasks)
-    return "\n\n".join(all_pgns)
+    return "\n\n".join([pgn for pgn in all_pgns if pgn])
