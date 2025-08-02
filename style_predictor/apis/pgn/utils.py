@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from datetime import datetime
 
 import aiohttp
 import berserk
@@ -102,6 +103,15 @@ def does_chess_dot_com_player_exists(username: str):
     return is_present
 
 
+def should_cache_archive(url: str, today: datetime | None = None) -> bool:
+    try:
+        today = today or datetime.now()
+        year, month = url.rstrip("/").split("/")[-2:]
+        return not (int(year) == today.year and int(month) == today.month)
+    except ValueError:
+        return False
+
+
 async def fetch_archive(
     archive_url: str, session: aiohttp.ClientSession, semaphore: asyncio.Semaphore
 ):
@@ -116,7 +126,11 @@ async def fetch_archive(
                         # Implement exponential backoff here if no Retry-After
                         await asyncio.sleep(45)  # Example fixed delay
                 elif resp.status == 200:
-                    return await resp.text()
+                    resp = await resp.text()
+                    if should_cache_archive(archive_url):
+                        cache.set(archive_url, resp)
+
+                    return resp
                 else:
                     LOG.error(f"Failed to fetch {archive_url}: {resp.status}")
                     return ""
@@ -133,14 +147,13 @@ async def get_chess_dot_com_games(username: str) -> str:
     """
     conn_limit = 15
     semaphore = asyncio.Semaphore(conn_limit)
-    all_pgns: list[str] = []
     response = chessdotcomClient.get_player_game_archives(username)
-    archives: dict[str, list[str]] = response.json
+    archives: dict[str, list[str]] = response.json.get("archives", [])
+    lookup = {url: cache.get(url) for url in archives}
+    cached = [pgn for pgn in lookup.values() if pgn]
+    to_fetch = [url for url, pgn in lookup.items() if not pgn]
     connection = aiohttp.TCPConnector(limit=conn_limit)
     async with aiohttp.ClientSession(connector=connection) as session:
-        tasks = [
-            fetch_archive(archive, session, semaphore)
-            for archive in archives.get("archives", [])
-        ]
-        all_pgns = await asyncio.gather(*tasks)
-    return "\n\n".join([pgn for pgn in all_pgns if pgn])
+        tasks = [fetch_archive(archive, session, semaphore) for archive in to_fetch]
+        fetched = await asyncio.gather(*tasks)
+    return "\n\n".join([*cached, *fetched])
