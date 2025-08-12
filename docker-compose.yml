@@ -42,47 +42,117 @@ services:
     volumes:
       - cachedata:/data
 
-  prometheus:
-    image: "prom/prometheus"
-    container_name: "my_chess_style_prom"
-    env_file:
-      - .env
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-    ports:
-      - 9090:9090
-    restart: unless-stopped
-    volumes:
-      - ./observability/prometheus:/etc/prometheus
-      - prom_data:/prometheus
+  # prometheus:
+  #   image: "prom/prometheus"
+  #   container_name: "my_chess_style_prom"
+  #   env_file:
+  #     - .env
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #   ports:
+  #     - 9090:9090
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./observability/prometheus:/etc/prometheus
+  #     - prom_data:/prometheus
+  #
+  # grafana:
+  #   image: "grafana/grafana"
+  #   container_name: "my_chess_style_graf"
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - 3000:3000
+  #   restart: unless-stopped
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=${GRAFANA_DEFAULT_USER}
+  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_DEFAULT_PASS}
+  #   volumes:
+  #     - ./observability/grafana:/etc/grafana/provisioning/datasources
+  #
+  # pg_explorer:
+  #   image: "prometheuscommunity/postgres-exporter"
+  #   container_name: "my_chess_style_pg_explorer"
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - 9187:9187
+  #   depends_on:
+  #     pg_server:
+  #       condition: service_healthy
+  #     prometheus:
+  #       condition: service_started
+  #   restart: unless-stopped
 
-  grafana:
-    image: "grafana/grafana"
-    container_name: "my_chess_style_graf"
-    env_file:
-      - .env
+  django-web-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: my_chess_style_django_web_frontend
     ports:
-      - 3000:3000
-    restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_DEFAULT_USER}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_DEFAULT_PASS}
-    volumes:
-      - ./observability/grafana:/etc/grafana/provisioning/datasources
-
-  pg_explorer:
-    image: "prometheuscommunity/postgres-exporter"
-    container_name: "my_chess_style_pg_explorer"
-    env_file:
-      - .env
+      - "3000:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+  django-web-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-chess-style-base
+    container_name: my_chess_style_django_web_backend
+    # command: uv run python manage.py makemigrations && uv run python manage.py migrate && uv run python manage.py import_chess_openings && uv run python manage.py runserver 0.0.0.0:8000
+    command: sh web_entry.sh
     ports:
-      - 9187:9187
+      - "8000:8000"
     depends_on:
-      pg_server:
-        condition: service_healthy
-      prometheus:
-        condition: service_started
-    restart: unless-stopped
+      - pg_server
+      - cache
+      - rabbitmq_server
+    env_file:
+      - .env
+    develop:
+      watch:
+        - path: .
+          target: /app
+          action: sync
+        - path: pyproject.toml
+          action: rebuild
+    volumes:
+      - dockerdata:/data
+  celery-worker:
+    image: my-chess-style-base
+    container_name: my_chess_style_celery_worker
+    depends_on:
+      - django-web-backend
+      - pg_server
+      - cache
+      - rabbitmq_server
+    env_file:
+      - .env
+    command: sh celery_entry.sh
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_files:/var/www/static:ro
+      - media_files:/var/www/media:ro
+      - ./ssl:/etc/nginx/ssl:ro # If using SSL
+    depends_on:
+      - django-web-backend
+      - django-web-frontend
 
 networks:
   default:
@@ -93,3 +163,6 @@ volumes:
   rabbitmqdata:
   cachedata:
   prom_data:
+  dockerdata:
+  media_files:
+  static_files:

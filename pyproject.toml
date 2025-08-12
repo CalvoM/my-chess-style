@@ -1,7 +1,7 @@
 [project]
 name = "my-chess-style"
 version = "0.1.0"
-description = "Add your description here"
+description = "MyChess Style"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
   "django>=5.2",
   "django-ninja>=1.4.0",
   "fastparquet>=2024.11.0",
+  "gunicorn>=23.0.0",
   "huggingface-hub>=0.31.2",
   "langchain-ollama>=0.3.6",
   "matplotlib>=3.10.1",
