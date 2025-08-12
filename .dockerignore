@@ -1,0 +1,15 @@
+.venv/
+.git/
+.github/
+.idea/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+uploads/
+.coverage/
+.pre-commit-config.yaml/
+*.log
+*.sqlite3
+staticfiles/
