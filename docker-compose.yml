@@ -27,6 +27,11 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER} # Load from .env
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS} # Load from .env
     restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq/
 
@@ -38,51 +43,56 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
     volumes:
       - cachedata:/data
 
-  # prometheus:
-  #   image: "prom/prometheus"
-  #   container_name: "my_chess_style_prom"
-  #   env_file:
-  #     - .env
-  #   command:
-  #     - "--config.file=/etc/prometheus/prometheus.yml"
-  #   ports:
-  #     - 9090:9090
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./observability/prometheus:/etc/prometheus
-  #     - prom_data:/prometheus
-  #
-  # grafana:
-  #   image: "grafana/grafana"
-  #   container_name: "my_chess_style_graf"
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - 3000:3000
-  #   restart: unless-stopped
-  #   environment:
-  #     - GF_SECURITY_ADMIN_USER=${GRAFANA_DEFAULT_USER}
-  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_DEFAULT_PASS}
-  #   volumes:
-  #     - ./observability/grafana:/etc/grafana/provisioning/datasources
-  #
-  # pg_explorer:
-  #   image: "prometheuscommunity/postgres-exporter"
-  #   container_name: "my_chess_style_pg_explorer"
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - 9187:9187
-  #   depends_on:
-  #     pg_server:
-  #       condition: service_healthy
-  #     prometheus:
-  #       condition: service_started
-  #   restart: unless-stopped
+  prometheus:
+    image: "prom/prometheus"
+    container_name: "my_chess_style_prom"
+    env_file:
+      - .env
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./observability/prometheus:/etc/prometheus
+      - prom_data:/prometheus
+
+  grafana:
+    image: "grafana/grafana"
+    container_name: "my_chess_style_graf"
+    env_file:
+      - .env
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_DEFAULT_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_DEFAULT_PASS}
+    volumes:
+      - ./observability/grafana:/etc/grafana/provisioning/datasources
+
+  pg_explorer:
+    image: "prometheuscommunity/postgres-exporter"
+    container_name: "my_chess_style_pg_explorer"
+    env_file:
+      - .env
+    ports:
+      - 9187:9187
+    depends_on:
+      pg_server:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
 
   django-web-frontend:
     build:
@@ -90,17 +100,12 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: my_chess_style_django_web_frontend
     ports:
-      - "3000:8080"
+      - "3000:80"
+    depends_on:
+      django-web-backend:
+        condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8080/",
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -115,9 +120,12 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - pg_server
-      - cache
-      - rabbitmq_server
+      pg_server:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      rabbitmq_server:
+        condition: service_healthy
     env_file:
       - .env
     develop:
@@ -133,10 +141,14 @@ services:
     image: my-chess-style-base
     container_name: my_chess_style_celery_worker
     depends_on:
-      - django-web-backend
-      - pg_server
-      - cache
-      - rabbitmq_server
+      django-web-backend:
+        condition: service_healthy
+      pg_server:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      rabbitmq_server:
+        condition: service_healthy
     env_file:
       - .env
     command: sh celery_entry.sh
@@ -146,13 +158,12 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - static_files:/var/www/static:ro
-      - media_files:/var/www/media:ro
-      - ./ssl:/etc/nginx/ssl:ro # If using SSL
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - django-web-backend
-      - django-web-frontend
+      django-web-backend:
+        condition: service_healthy
+      django-web-frontend:
+        condition: service_healthy
 
 networks:
   default:
